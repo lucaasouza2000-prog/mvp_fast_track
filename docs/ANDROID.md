@@ -2,7 +2,7 @@
 
 ## Gerar o aplicativo
 
-O aplicativo está vinculado ao projeto Expo `lucas_souza_gm/mvpfasttrack`, ID `4ef6f5b5-dce9-4a36-8a1a-761f876d8b86`. A versão preparada é **0.1.3 (4)**, com nome de exibição **FAST TRACK**, nova marca, cartões de progresso, filtros e sequência de paradas. O pacote e a assinatura permanecem os mesmos para permitir atualização sobre a versão instalada.
+O aplicativo está vinculado ao projeto Expo `lucas_souza_gm/mvpfasttrack`, ID `4ef6f5b5-dce9-4a36-8a1a-761f876d8b86`. A versão preparada é **0.1.4 (5)**, com nome de exibição **FAST TRACK** e o desenho enviado pelo usuário: cabeçalho azul escuro, ações verdes, lista de rotas e detalhe de entregas com nota, peso e check-in/check-out. O pacote e a assinatura permanecem os mesmos para permitir atualização sobre a versão instalada.
 
 Instale dependências na raiz (`npm ci`). O perfil `preview` de `apps/mobile/eas.json` já inclui a URL e a chave **publicável** do mesmo Supabase usado pelo site e `EXPO_PUBLIC_WEB_URL=https://mvpfasttrack.vercel.app` para consultar a previsão. Esses valores são públicos e ficam embutidos no APK; nenhuma chave administrativa faz parte dessa configuração. O ambiente EAS selecionado para esse perfil é `preview`. O perfil `production` usa o ambiente `production` e exige as duas variáveis `EXPO_PUBLIC_SUPABASE_*` configuradas nesse ambiente antes de gerar um AAB. Nunca configure `service_role` no Expo.
 
@@ -47,7 +47,7 @@ A versão `0.1.1 (2)` recupera metadados e fragmentos de sessão ilegíveis remo
 
 Essa versão também abre uma conexão isolada para cada transação local, aplica a chave SQLCipher antes de consultar o banco e inicia `BEGIN IMMEDIATE`. Confirma ou reverte a operação e fecha a conexão. A conexão principal também é explicitamente configurada com a chave. O arquivo, as tabelas e a chave existente são preservados. Os testes de integração exercitam o armazenamento real do aplicativo com SQLite, modelando a exigência de chave por conexão; eles reproduziram a falha antes da correção. O usuário confirmou a instalação da versão `0.1.1 (2)`, build `44013497-f08f-4418-8643-913270601ab7`, sincronização de rotas, check-in, fila zerada e posição recebida no painel usando o emulador oficial. Isso não valida GPS em aparelho físico ou toda a operação offline.
 
-A versão `0.1.3 (4)` também exige gerar e instalar um novo APK; versões já instaladas não recebem estas alterações de código automaticamente. Ao atualizar fontes de uma cópia ZIP, copie tanto `apps/mobile` quanto `packages/core` antes de iniciar o build. Instale atualizações com o mesmo pacote e assinatura para conservar dados. Não desinstale nem limpe o armazenamento se houver entregas pendentes de sincronização.
+A versão `0.1.4 (5)` também exige gerar e instalar um novo APK; versões já instaladas não recebem estas alterações de código automaticamente. Ao atualizar fontes de uma cópia ZIP, copie tanto `apps/mobile` quanto `packages/core` antes de iniciar o build. Instale atualizações com o mesmo pacote e assinatura para conservar dados. Não desinstale nem limpe o armazenamento se houver entregas pendentes de sincronização.
 
 No Android Studio, conclua o assistente **Standard**, abra **More Actions → Virtual Device Manager**, crie um dispositivo com imagem Android 11 ou superior compatível com seu computador e inicie-o. Baixe o APK do Expo e arraste o arquivo para a janela do emulador. Use contas e rotas marcadas como teste: a localização do emulador é simulada e não comprova GPS durante uma viagem real.
 
@@ -80,3 +80,7 @@ Meta de coleta automática: intervalo de 15 s, sem exigir deslocamento mínimo. 
 ## iOS
 
 Estrutura de bundle, permissão e background mode estão preparadas. O início do rastreamento está deliberadamente limitado ao Android até haver build, permissões e testes físicos específicos de iOS. Não há alegação de suporte validado.
+
+## Interface simplificada
+
+A aba Rotas mostra os cartões e o botão Confirmar para abrir as entregas. O detalhe apresenta endereço, nota, peso e check-in/check-out. As métricas usam somente os dados reais; chegada sem previsão aparece como traço. GPS e navegação ficam em Conta. Estado da conexão, fila, mensagens e tentativa manual de sincronização ficam em Alertas, preservando as funções sem ocupar a tela principal. A pausa e o logout mantêm o comportamento anterior.

@@ -161,86 +161,103 @@ export function DeliveryDetail({
           </span>
           <h3>Detalhes da entrega</h3>
           <dl>
-            <dt>
-              <Truck size={15} /> Motorista
-            </dt>
-            <dd>{route.profiles.name}</dd>
-            <dt>
-              <Phone size={15} /> Contato · veículo
-            </dt>
-            <dd>
-              {route.profiles.phone ?? "Sem telefone"} · {route.vehicles.plate}
-            </dd>
-            <dt>
-              <MapPin size={15} /> Destino
-            </dt>
-            <dd>{stop?.address}</dd>
-            <dt>Documento fiscal</dt>
-            <dd className="fiscal-code">
-              {delivery.fiscal_documents.map((d) => d.code).join(", ")}
-            </dd>
-            <dt>Carga</dt>
-            <dd>
-              {delivery.description} · {delivery.weight_kg} kg
-              {delivery.volume_m3 ? ` · ${delivery.volume_m3} m³` : ""}
-            </dd>
-            <dt>
-              <Clock size={15} /> Última localização
-            </dt>
-            <dd>
-              {last ? (
-                <>
-                  {new Date(last.captured_at).toLocaleString("pt-BR")}
-                  <small>
-                    {demo
-                      ? "Posição fictícia de demonstração"
-                      : fresh
-                        ? "Registro recente"
-                        : "Localização desatualizada"}{" "}
-                    · precisão{" "}
-                    {last.accuracy == null
-                      ? "não informada"
-                      : `${Math.round(last.accuracy)} m`}
-                    <br />
-                    {last.latitude.toFixed(5)}, {last.longitude.toFixed(5)}
-                  </small>
-                </>
-              ) : (
-                "Nenhuma posição recebida"
-              )}
-            </dd>
-            <dt>Saída prevista</dt>
-            <dd>
-              {route.scheduled_at
-                ? new Date(route.scheduled_at).toLocaleString("pt-BR")
-                : "Não informada"}
-            </dd>
-            <dt>
-              <Clock size={15} /> Previsão de chegada
-            </dt>
-            <dd className="arrival-estimate">
-              {demo ? (
-                "Exemplo sem previsão real"
-              ) : arrivalTime(estimate, now) ? (
-                <>
-                  <strong>Por volta de {arrivalTime(estimate, now)}</strong>
-                  <small>
-                    Estimativa sem trânsito em tempo real ou tempo de parada.
-                  </small>
-                </>
-              ) : estimate?.status === "completed" ? (
-                "Entrega concluída"
-              ) : estimate?.status === "stale" ||
-                estimate?.status === "ready" ? (
-                "Aguardando localização recente"
-              ) : estimate?.status === "waiting" ? (
-                "Aguardando início da rota e localização"
-              ) : estimate ? (
-                "Previsão indisponível no momento"
-              ) : (
-                "Calculando previsão…"
-              )}
-            </dd>
+            <div className="detail-field">
+              <dt>
+                <Truck size={15} /> Motorista
+              </dt>
+              <dd>{route.profiles.name}</dd>
+            </div>
+            <div className="detail-field">
+              <dt>
+                <Phone size={15} /> Contato · veículo
+              </dt>
+              <dd>
+                {route.profiles.phone ?? "Sem telefone"} ·{" "}
+                {route.vehicles.plate}
+              </dd>
+            </div>
+            <div className="detail-field">
+              <dt>
+                <MapPin size={15} /> Destino
+              </dt>
+              <dd>{stop?.address}</dd>
+            </div>
+            <div className="detail-field">
+              <dt>Documento fiscal</dt>
+              <dd className="fiscal-code">
+                {delivery.fiscal_documents.map((d) => d.code).join(", ")}
+              </dd>
+            </div>
+            <div className="detail-field">
+              <dt>Carga</dt>
+              <dd>
+                {delivery.description} · {delivery.weight_kg} kg
+                {delivery.volume_m3 ? ` · ${delivery.volume_m3} m³` : ""}
+              </dd>
+            </div>
+            <div className="detail-field">
+              <dt>
+                <Clock size={15} /> Última localização
+              </dt>
+              <dd>
+                {last ? (
+                  <>
+                    {new Date(last.captured_at).toLocaleString("pt-BR")}
+                    <small>
+                      {demo
+                        ? "Posição fictícia de demonstração"
+                        : fresh
+                          ? "Registro recente"
+                          : "Localização desatualizada"}{" "}
+                      · precisão{" "}
+                      {last.accuracy == null
+                        ? "não informada"
+                        : `${Math.round(last.accuracy)} m`}
+                      <br />
+                      {last.latitude.toFixed(5)}, {last.longitude.toFixed(5)}
+                    </small>
+                  </>
+                ) : (
+                  "Nenhuma posição recebida"
+                )}
+              </dd>
+            </div>
+            <div className="detail-field">
+              <dt>Saída prevista</dt>
+              <dd>
+                {route.scheduled_at
+                  ? new Date(route.scheduled_at).toLocaleString("pt-BR")
+                  : "Não informada"}
+              </dd>
+            </div>
+            <div className="detail-field">
+              <dt>
+                <Clock size={15} /> Previsão de chegada
+              </dt>
+              <dd className="arrival-estimate">
+                {demo ? (
+                  "Exemplo sem previsão real"
+                ) : arrivalTime(estimate, now) ? (
+                  <>
+                    <strong>Por volta de {arrivalTime(estimate, now)}</strong>
+                    <small>
+                      Estimativa sem trânsito em tempo real ou tempo de parada.
+                    </small>
+                  </>
+                ) : estimate?.status === "completed" ? (
+                  "Entrega concluída"
+                ) : estimate?.status === "stale" ||
+                  estimate?.status === "ready" ? (
+                  "Aguardando localização recente"
+                ) : estimate?.status === "waiting" ? (
+                  "Aguardando início da rota e localização"
+                ) : estimate ? (
+                  "Previsão indisponível no momento"
+                ) : (
+                  "Calculando previsão…"
+                )}
+              </dd>
+            </div>
           </dl>
           <p className="muted">
             {demo

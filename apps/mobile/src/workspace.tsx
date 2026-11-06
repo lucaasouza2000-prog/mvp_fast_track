@@ -1,13 +1,11 @@
 import React, { useState } from "react";
 import {
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text as NativeText,
   View,
   type TextProps,
-  type DimensionValue,
 } from "react-native";
 import {
   arrivalTime,
@@ -21,7 +19,7 @@ function Text({ style, ...props }: TextProps) {
   return (
     <NativeText
       {...props}
-      style={[{ fontFamily: "Inter_400Regular" }, style]}
+      style={[{ fontFamily: "Inter_400Regular", color: "#142033" }, style]}
     />
   );
 }
@@ -33,84 +31,116 @@ const clock = (value?: string | null) =>
         timeZone: "America/Sao_Paulo",
       })
     : "—";
-function duration(route: Route) {
-  if (!route.started_at) return "—";
-  const endings = route.deliveries
-    .map((d) => Date.parse(d.checked_out_at ?? ""))
-    .filter(Number.isFinite);
-  const end = route.completed_at
-    ? Date.parse(route.completed_at)
-    : route.status === "concluida" && endings.length
-      ? Math.max(...endings)
+function duration(r: Route) {
+  if (!r.started_at) return "—";
+  const end = r.completed_at
+    ? Date.parse(r.completed_at)
+    : r.status === "concluida"
+      ? Math.max(
+          ...r.deliveries.map((d) =>
+            Date.parse(d.checked_out_at ?? r.started_at!),
+          ),
+        )
       : Date.now();
-  const minutes = Math.max(
-    0,
-    Math.floor((end - Date.parse(route.started_at)) / 60000),
-  );
-  return (
-    Math.floor(minutes / 60) +
-    "h " +
-    String(minutes % 60).padStart(2, "0") +
-    "m"
-  );
+  const m = Math.max(0, Math.floor((end - Date.parse(r.started_at)) / 60000));
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
 }
-function Pill({ status }: { status: string }) {
-  return (
-    <View
-      style={[
-        s.pill,
-        status === "concluida" && s.pillDone,
-        status === "ativa" || status === "em_transporte" ? s.pillActive : null,
-      ]}
-    >
-      <Text style={s.pillText}>{labels[status] ?? status}</Text>
-    </View>
-  );
-}
-function Action({
-  title,
-  onPress,
-  secondary = false,
-  disabled = false,
-}: {
-  title: string;
-  onPress: () => void;
-  secondary?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      disabled={disabled}
-      style={[
-        s.action,
-        secondary && s.actionSecondary,
-        disabled && { opacity: 0.45 },
-      ]}
-    >
-      <Text style={[s.actionText, secondary && { color: "#245e90" }]}>
-        {title}
+function NavIcon({ name, color }: { name: string; color: string }) {
+  if (name === "rotas")
+    return (
+      <Text style={{ fontSize: 27, color, transform: [{ rotate: "-35deg" }] }}>
+        ➤
       </Text>
-    </Pressable>
-  );
-}
-function Progress({ route }: { route: Route }) {
-  const done = route.deliveries.filter((d) => d.status === "concluida").length;
-  const pct = route.deliveries.length
-    ? Math.round((done / route.deliveries.length) * 100)
-    : 0;
+    );
+  if (name === "resumo")
+    return (
+      <View
+        style={{
+          width: 25,
+          height: 25,
+          justifyContent: "space-around",
+          paddingVertical: 3,
+        }}
+      >
+        {[0, 1, 2].map((n) => (
+          <View
+            key={n}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+          >
+            <View
+              style={{
+                width: 3,
+                height: 3,
+                borderRadius: 2,
+                backgroundColor: color,
+              }}
+            />
+            <View style={{ width: 17, height: 2, backgroundColor: color }} />
+          </View>
+        ))}
+      </View>
+    );
   return (
-    <View>
-      <View style={s.progressHeading}>
-        <Text style={s.caption}>PROGRESSO DAS ENTREGAS</Text>
-        <Text style={s.percent}>{pct}%</Text>
-      </View>
-      <View style={s.progressTrack}>
-        <View
-          style={[s.progressFill, { width: (pct + "%") as DimensionValue }]}
-        />
-      </View>
+    <View style={{ width: 26, height: 27 }}>
+      {name === "conta" ? (
+        <>
+          <View
+            style={{
+              position: "absolute",
+              left: 9,
+              top: 0,
+              width: 9,
+              height: 9,
+              borderWidth: 2,
+              borderColor: color,
+              borderRadius: 8,
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              left: 3,
+              bottom: 0,
+              width: 22,
+              height: 13,
+              borderWidth: 2,
+              borderBottomWidth: 0,
+              borderColor: color,
+              borderTopLeftRadius: 14,
+              borderTopRightRadius: 14,
+            }}
+          />
+        </>
+      ) : (
+        <>
+          <View
+            style={{
+              position: "absolute",
+              left: 5,
+              top: 1,
+              width: 17,
+              height: 20,
+              borderWidth: 2,
+              borderColor: color,
+              borderTopLeftRadius: 12,
+              borderTopRightRadius: 12,
+              borderBottomLeftRadius: 3,
+              borderBottomRightRadius: 3,
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              left: 11,
+              bottom: 1,
+              width: 5,
+              height: 3,
+              borderRadius: 2,
+              backgroundColor: color,
+            }}
+          />
+        </>
+      )}
     </View>
   );
 }
@@ -124,411 +154,304 @@ interface Props {
   error: string;
   notice: string;
   estimates: Record<string, ArrivalEstimate>;
-  onOperation: (route: Route, delivery: Delivery) => void;
-  onDirections: (route: Route, delivery: Delivery) => void;
-  onTrack: (route: Route) => void;
+  onOperation: (r: Route, d: Delivery) => void;
+  onDirections: (r: Route, d: Delivery) => void;
+  onTrack: (r: Route) => void;
   onSync: () => void;
   onPause: () => void;
   onLogout: () => void;
 }
-export default function DriverWorkspace(props: Props) {
-  const {
-    profile,
-    routes,
-    online,
-    busy,
-    pending,
-    health,
-    error,
-    notice,
-    estimates,
-  } = props;
-  const [tab, setTab] = useState("rotas");
-  const [filter, setFilter] = useState("todas");
-  const [selected, setSelected] = useState<string | null>(null);
-  const route = routes.find((r) => r.id === selected);
-  const filters = [
-    ["todas", "Todas"],
-    ["ativa", "Ativas"],
-    ["planejada", "Pendentes"],
-    ["concluida", "Finalizadas"],
-  ];
-  const deliveries = routes.flatMap((r) => r.deliveries);
-  const done = deliveries.filter((d) => d.status === "concluida").length;
-  const arrival = (r: Route, d?: Delivery) => {
-    if (d?.status === "concluida")
-      return "Entregue às " + clock(d.checked_out_at);
-    const eta = d ? estimates[d.id] : undefined;
-    const time = online ? arrivalTime(eta) : null;
-    if (time) return "Chegada aprox. " + time;
-    if (!online) return "Previsão disponível online";
-    if (d?.status === "pendente") return "Aguardando coleta";
-    if (r.status !== "ativa") return "Aguardando início";
-    return eta?.status === "unavailable"
-      ? "Previsão indisponível"
-      : "Aguardando GPS recente";
-  };
+function Button({
+  title,
+  onPress,
+  disabled = false,
+  secondary = false,
+}: {
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+  secondary?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={[
+        s.button,
+        secondary && s.secondary,
+        disabled && { opacity: 0.45 },
+      ]}
+    >
+      <Text style={[s.buttonText, secondary && { color: "#102b48" }]}>
+        {title}
+      </Text>
+    </Pressable>
+  );
+}
+function Badge({ status }: { status: string }) {
+  return (
+    <View
+      style={[
+        s.badge,
+        (status === "ativa" || status === "em_transporte") && s.amber,
+        status === "concluida" && s.green,
+      ]}
+    >
+      <Text style={s.badgeText}>{labels[status] ?? status}</Text>
+    </View>
+  );
+}
+export default function DriverWorkspace(p: Props) {
+  const [tab, setTab] = useState("rotas"),
+    [selected, setSelected] = useState<string | null>(null);
+  const route = p.routes.find((r) => r.id === selected);
   const ordered = (r: Route) =>
     [...r.deliveries].sort(
       (a, b) =>
-        (r.stops.find((s) => s.id === a.stop_id)?.sequence ?? 0) -
-        (r.stops.find((s) => s.id === b.stop_id)?.sequence ?? 0),
+        (r.stops.find((x) => x.id === a.stop_id)?.sequence ?? 0) -
+        (r.stops.find((x) => x.id === b.stop_id)?.sequence ?? 0),
     );
+  const deliveries = p.routes.flatMap((r) => r.deliveries);
   return (
     <View style={s.root}>
-      <View style={s.top}>
-        <Image
-          source={require("../assets/fast-track-logo.png")}
-          style={s.logo}
-          resizeMode="cover"
-          accessibilityLabel="FAST TRACK"
-        />
-        <Text style={[s.connection, { color: online ? "#129b83" : "#b28124" }]}>
-          ● {online ? "Conectado" : "Sem internet"}
-        </Text>
-      </View>
-      <ScrollView contentContainerStyle={s.content}>
+      <View style={s.header}>
         {tab === "rotas" && route ? (
           <>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Voltar para rotas"
               onPress={() => setSelected(null)}
+              style={s.back}
             >
-              <Text style={s.back}>‹ Suas rotas</Text>
+              <Text style={s.backText}>‹ Suas rotas</Text>
             </Pressable>
-            <View style={s.row}>
-              <View>
-                <Text style={s.title}>{route.code}</Text>
-                <Text style={s.subtitle}>
-                  {route.vehicles.plate} · {route.deliveries.length} entrega(s)
-                </Text>
-              </View>
-              <Pill status={route.status} />
-            </View>
-            <Progress route={route} />
-            <View style={s.health}>
-              <Text style={s.healthTitle}>{health}</Text>
-              <Text style={s.small}>
-                {pending
-                  ? `${pending} registro(s) aguardando confirmação`
-                  : "Sincronizado · atualização automática"}
-              </Text>
-            </View>
-            {error ? <Text style={s.error}>{error}</Text> : null}
-            {notice ? <Text style={s.notice}>{notice}</Text> : null}
-            <View style={s.timelineRow}>
-              <View style={s.rail}>
-                <View style={s.railLine} />
-                <View style={[s.circle, s.circleStart]}>
-                  <Text style={s.circleText}>↑</Text>
-                </View>
-              </View>
-              <View style={s.stopCard}>
-                <Text style={s.stopTitle}>Ponto de partida</Text>
-                <Text style={s.address}>{route.origin}</Text>
-                <Text style={s.small}>
-                  Saída {clock(route.started_at ?? route.scheduled_at)}
-                </Text>
-              </View>
-            </View>
-            {ordered(route).map((d, index) => (
-              <View key={d.id} style={s.timelineRow}>
-                <View style={s.rail}>
-                  <View style={s.railLine} />
-                  <View
-                    style={[
-                      s.circle,
-                      d.status === "concluida" && s.circleDone,
-                      d.status === "em_transporte" && s.circleStart,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        s.circleText,
-                        d.status === "pendente" && { color: "#63809a" },
-                      ]}
-                    >
-                      {d.status === "concluida" ? "✓" : index + 1}
-                    </Text>
-                  </View>
-                </View>
-                <View
-                  style={[
-                    s.stopCard,
-                    d.status === "em_transporte" && s.stopActive,
-                  ]}
-                >
-                  <Text style={s.eta}>{arrival(route, d)}</Text>
-                  <Text style={s.stopTitle}>{d.clients.name}</Text>
-                  <Text style={s.address}>
-                    {route.stops.find((p) => p.id === d.stop_id)?.address}
-                  </Text>
-                  <Text style={s.small}>
-                    {d.cargo_code} · {d.weight_kg} kg
-                  </Text>
-                  <Pill status={d.status} />
-                  {d.checked_in_at ? (
-                    <Text style={s.small}>
-                      Coleta confirmada às {clock(d.checked_in_at)}
-                    </Text>
-                  ) : null}
-                  {d.status === "em_transporte" ? (
-                    <Action
-                      title="Ver rota da entrega"
-                      onPress={() => props.onDirections(route, d)}
-                    />
-                  ) : null}
-                  {d.status !== "concluida" ? (
-                    <Action
-                      secondary
-                      disabled={busy}
-                      title={
-                        d.status === "pendente"
-                          ? "Confirmar carga · check-in"
-                          : "Concluir entrega · check-out"
-                      }
-                      onPress={() => props.onOperation(route, d)}
-                    />
-                  ) : null}
-                </View>
-              </View>
-            ))}
-            <Text style={s.disclaimer}>
-              Previsão aproximada, sem trânsito em tempo real ou tempo de
-              parada.
-            </Text>
-            {route.status !== "concluida" ? (
-              <Action
-                title="Iniciar / retomar GPS"
-                disabled={busy || !online || pending > 0}
-                onPress={() => props.onTrack(route)}
-              />
-            ) : null}
-            <Action
-              title="Sincronizar agora"
-              secondary
-              onPress={props.onSync}
-            />
-          </>
-        ) : tab === "rotas" ? (
-          <>
-            <Text style={s.eyebrow}>
-              OLÁ, {profile?.name.split(" ")[0].toUpperCase() ?? "MOTORISTA"}
-            </Text>
-            <Text style={s.title}>Suas rotas</Text>
-            <Text style={s.subtitle}>
-              Sua operação organizada, parada por parada.
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={s.filters}
-            >
-              {filters.map(([value, label]) => (
-                <Pressable
-                  key={value}
-                  accessibilityRole="button"
-                  onPress={() => setFilter(value)}
-                  style={[s.filter, filter === value && s.filterSelected]}
-                >
-                  <Text
-                    style={[
-                      s.filterText,
-                      filter === value && { color: "#245e90" },
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-            <View style={s.health}>
-              <Text style={s.healthTitle}>{health}</Text>
-              <Text style={s.small}>
-                {pending
-                  ? `${pending} registro(s) aguardando confirmação do servidor`
-                  : "Sincronizado · atualização automática"}
-              </Text>
-            </View>
-            {error ? <Text style={s.error}>{error}</Text> : null}
-            {notice ? <Text style={s.notice}>{notice}</Text> : null}
-            {routes
-              .filter((r) => filter === "todas" || r.status === filter)
-              .map((r) => {
-                const stops = ordered(r);
-                const last = [...stops]
-                  .reverse()
-                  .find((d) => d.status === "em_transporte");
-                return (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={"Abrir rota " + r.code}
-                    key={r.id}
-                    style={s.routeCard}
-                    onPress={() => setSelected(r.id)}
-                  >
-                    <View style={s.row}>
-                      <View>
-                        <Text style={s.routeTitle}>{r.code}</Text>
-                        <Text style={s.small}>{r.vehicles.plate}</Text>
-                      </View>
-                      <Pill status={r.status} />
-                    </View>
-                    <Progress route={r} />
-                    <View style={s.metrics}>
-                      <View>
-                        <Text style={s.caption}>DURAÇÃO</Text>
-                        <Text style={s.metric}>{duration(r)}</Text>
-                      </View>
-                      <View>
-                        <Text style={s.caption}>SAÍDA</Text>
-                        <Text style={s.metric}>
-                          {clock(r.started_at ?? r.scheduled_at)}
-                        </Text>
-                      </View>
-                      <View>
-                        <Text style={s.caption}>CHEGADA</Text>
-                        <Text style={s.metric}>
-                          {r.status === "concluida"
-                            ? clock(r.completed_at)
-                            : (arrivalTime(
-                                last ? estimates[last.id] : undefined,
-                              ) ?? "—")}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={s.cardFooter}>
-                      <View style={s.stat}>
-                        <Text style={s.statNumber}>
-                          {
-                            r.deliveries.filter((d) => d.status === "concluida")
-                              .length
-                          }
-                          /{r.deliveries.length}
-                        </Text>
-                        <Text style={s.small}>entregas</Text>
-                      </View>
-                      <View style={s.stat}>
-                        <Text style={s.statNumber}>
-                          {r.deliveries.reduce(
-                            (sum, d) => sum + d.weight_kg,
-                            0,
-                          )}{" "}
-                          kg
-                        </Text>
-                        <Text style={s.small}>peso da rota</Text>
-                      </View>
-                      <Text style={s.openRoute}>Ver rota ›</Text>
-                    </View>
-                    <Text numberOfLines={2} style={s.destination}>
-                      {r.destination}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            {!routes.length ? (
-              <View style={s.routeCard}>
-                <Text style={s.stopTitle}>Nenhuma rota sincronizada</Text>
-                <Text style={s.address}>
-                  Conecte-se e sincronize para carregar suas entregas.
-                </Text>
-              </View>
-            ) : null}
-            <Action
-              title="Sincronizar agora"
-              secondary
-              onPress={props.onSync}
-            />
-          </>
-        ) : tab === "resumo" ? (
-          <>
-            <Text style={s.title}>Resumo da operação</Text>
-            <Text style={s.subtitle}>
-              Dados das rotas atribuídas à sua conta.
-            </Text>
-            <View style={s.routeCard}>
-              {[
-                [
-                  "Rotas em andamento",
-                  routes.filter((r) => r.status === "ativa").length,
-                ],
-                [
-                  "Rotas finalizadas",
-                  routes.filter((r) => r.status === "concluida").length,
-                ],
-                ["Entregas concluídas", done],
-                ["Entregas restantes", deliveries.length - done],
-                ["Registros aguardando envio", pending],
-              ].map(([label, value]) => (
-                <View key={label} style={s.summaryRow}>
-                  <Text style={s.address}>{label}</Text>
-                  <Text style={s.statNumber}>{value}</Text>
-                </View>
-              ))}
-            </View>
-          </>
-        ) : tab === "alertas" ? (
-          <>
-            <Text style={s.title}>Alertas do aplicativo</Text>
-            <View style={s.routeCard}>
-              <Text style={s.stopTitle}>{health}</Text>
-              <Text style={s.address}>
-                {pending} registro(s) pendente(s) de sincronização.
-              </Text>
-              <Text style={s.address}>
-                {online
-                  ? "Conexão disponível."
-                  : "Sem internet. Registros permanecem no aparelho."}
-              </Text>
-              {error ? <Text style={s.error}>{error}</Text> : null}
-            </View>
-            <Action title="Sincronizar agora" onPress={props.onSync} />
-            <Action
-              title="Pausar coleta GPS"
-              secondary
-              onPress={props.onPause}
-            />
+            <Text style={s.heading}>{route.code}</Text>
           </>
         ) : (
           <>
-            <Text style={s.title}>Sua conta</Text>
-            <View style={s.routeCard}>
-              <Text style={s.stopTitle}>{profile?.name}</Text>
-              <Text style={s.address}>Motorista</Text>
-              <Text style={s.address}>
-                {profile?.phone ?? "Telefone não informado"}
+            <Text style={s.brand}>FAST TRACK</Text>
+            {tab === "rotas" && (
+              <Text style={s.greeting}>
+                Olá, {p.profile?.name.split(" ")[0] ?? "Motorista"}
               </Text>
-            </View>
-            <Action
-              title="Sair do FAST TRACK"
-              secondary
-              onPress={props.onLogout}
-            />
+            )}
+            <Text style={s.heading}>
+              {tab === "rotas"
+                ? "Suas rotas"
+                : tab === "resumo"
+                  ? "Resumo"
+                  : tab === "alertas"
+                    ? "Alertas"
+                    : "Minha conta"}
+            </Text>
           </>
+        )}
+      </View>
+      <ScrollView contentContainerStyle={s.content}>
+        {tab === "rotas" && route ? (
+          ordered(route).map((d, i) => (
+            <View
+              key={d.id}
+              style={[
+                s.delivery,
+                d.status === "em_transporte" && s.deliveryActive,
+              ]}
+            >
+              <Text style={s.deliveryTitle}>Entrega {i + 1}</Text>
+              <Text style={s.address}>
+                {route.stops.find((x) => x.id === d.stop_id)?.address}
+              </Text>
+              <View style={s.tiles}>
+                <View style={s.tile}>
+                  <Text style={s.label}>Nota</Text>
+                  <Text style={s.value}>
+                    {d.fiscal_documents.map((f) => f.code).join(", ") || "—"}
+                  </Text>
+                </View>
+                <View style={s.tile}>
+                  <Text style={s.label}>Peso</Text>
+                  <Text style={s.value}>{d.weight_kg} kg</Text>
+                </View>
+              </View>
+              {d.status === "concluida" ? (
+                <View style={s.completed}>
+                  <Text style={s.completedText}>✓ Entrega concluída</Text>
+                </View>
+              ) : (
+                <View style={s.operation}>
+                  <Button
+                    title={d.status === "pendente" ? "Check-in" : "Check-out"}
+                    disabled={p.busy}
+                    onPress={() => p.onOperation(route, d)}
+                  />
+                </View>
+              )}
+              {p.error ? <Text style={s.error}>{p.error}</Text> : null}
+            </View>
+          ))
+        ) : tab === "rotas" ? (
+          <>
+            <View style={s.chip}>
+              <Text style={s.chipText}>Minhas rotas</Text>
+            </View>
+            {p.routes.map((r) => {
+              const stops = ordered(r),
+                last = [...stops]
+                  .reverse()
+                  .find((d) => d.status === "em_transporte");
+              return (
+                <View key={r.id} style={s.card}>
+                  <View style={s.row}>
+                    <Text style={s.routeTitle}>{r.code}</Text>
+                    <Badge status={r.status} />
+                  </View>
+                  <Text style={s.plate}>{r.vehicles.plate}</Text>
+                  <View style={s.metrics}>
+                    {[
+                      ["Duração", duration(r)],
+                      ["Saída", clock(r.started_at ?? r.scheduled_at)],
+                      [
+                        "Chegada",
+                        r.status === "concluida"
+                          ? clock(r.completed_at)
+                          : p.online
+                            ? (arrivalTime(
+                                last ? p.estimates[last.id] : undefined,
+                              ) ?? "—")
+                            : "—",
+                      ],
+                    ].map(([label, value]) => (
+                      <View key={label}>
+                        <Text style={s.label}>{label}</Text>
+                        <Text style={s.metric}>{value}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={s.tiles}>
+                    <View style={s.tile}>
+                      <Text style={s.number}>
+                        {
+                          r.deliveries.filter((d) => d.status === "concluida")
+                            .length
+                        }
+                        /{r.deliveries.length}
+                      </Text>
+                      <Text style={s.label}>entregas</Text>
+                    </View>
+                    <View style={s.tile}>
+                      <Text style={s.number}>
+                        {r.deliveries.reduce((sum, d) => sum + d.weight_kg, 0)}{" "}
+                        kg
+                      </Text>
+                      <Text style={s.label}>peso da rota</Text>
+                    </View>
+                  </View>
+                  <Text style={s.address}>⌖ {r.destination}</Text>
+                  <Button
+                    title={
+                      r.status === "concluida"
+                        ? "Ver entregas  →"
+                        : "Confirmar  →"
+                    }
+                    onPress={() => setSelected(r.id)}
+                  />
+                </View>
+              );
+            })}
+            {!p.routes.length && (
+              <View style={s.card}>
+                <Text>Nenhuma rota sincronizada.</Text>
+                <Button title="Carregar rotas" onPress={p.onSync} />
+              </View>
+            )}
+          </>
+        ) : tab === "resumo" ? (
+          <View style={s.card}>
+            <Text style={s.deliveryTitle}>Sua operação</Text>
+            {[
+              ["Rotas", p.routes.length],
+              ["Entregas", deliveries.length],
+              [
+                "Concluídas",
+                deliveries.filter((d) => d.status === "concluida").length,
+              ],
+            ].map(([label, value]) => (
+              <View style={s.row} key={label}>
+                <Text>{label}</Text>
+                <Text style={s.value}>{value}</Text>
+              </View>
+            ))}
+          </View>
+        ) : tab === "alertas" ? (
+          <View style={s.card}>
+            <Text style={s.deliveryTitle}>
+              {p.online ? "Conectado" : "Sem internet"}
+            </Text>
+            <Text>{p.health}</Text>
+            <Text>
+              {p.pending
+                ? `${p.pending} registros aguardando envio automático.`
+                : "Todos os registros foram sincronizados."}
+            </Text>
+            {p.error ? <Text style={s.error}>{p.error}</Text> : null}
+            {p.notice ? <Text>{p.notice}</Text> : null}
+            <Button title="Tentar sincronizar" onPress={p.onSync} />
+          </View>
+        ) : (
+          <View style={s.card}>
+            <Text style={s.deliveryTitle}>
+              {p.profile?.name ?? "Motorista"}
+            </Text>
+            <Text>{p.health}</Text>
+            {p.routes
+              .filter(
+                (r) =>
+                  r.status !== "concluida" &&
+                  r.deliveries.some((d) => d.status === "em_transporte"),
+              )
+              .map((r) => (
+                <View key={r.id} style={s.accountRoute}>
+                  <Text style={s.value}>{r.code}</Text>
+                  <Button
+                    title="Iniciar / retomar GPS"
+                    disabled={p.busy || !p.online || p.pending > 0}
+                    onPress={() => p.onTrack(r)}
+                  />
+                  {ordered(r)
+                    .filter((d) => d.status === "em_transporte")
+                    .map((d) => (
+                      <Button
+                        key={d.id}
+                        secondary
+                        title={"Navegar · " + d.clients.name}
+                        onPress={() => p.onDirections(r, d)}
+                      />
+                    ))}
+                </View>
+              ))}
+            <Button title="Pausar GPS" secondary onPress={p.onPause} />
+            <Button title="Sair" secondary onPress={p.onLogout} />
+          </View>
         )}
       </ScrollView>
       <View style={s.nav}>
         {[
-          ["rotas", "↗", "Rotas"],
-          ["resumo", "▥", "Resumo"],
-          ["alertas", "◷", "Alertas"],
-          ["conta", "●", "Conta"],
-        ].map(([value, icon, label]) => (
+          ["rotas", "➤", "Rotas"],
+          ["resumo", "☷", "Resumo"],
+          ["alertas", "♧", "Alertas"],
+          ["conta", "♙", "Conta"],
+        ].map(([id, icon, label]) => (
           <Pressable
-            key={value}
-            accessibilityRole="button"
-            onPress={() => {
-              setTab(value);
-              setSelected(null);
-            }}
+            key={id}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === id }}
+            onPress={() => setTab(id)}
             style={s.navItem}
           >
-            <Text style={[s.navIcon, tab === value && s.navSelected]}>
-              {icon}
-            </Text>
-            <Text style={[s.navLabel, tab === value && s.navSelected]}>
+            <NavIcon name={id} color={tab === id ? "#108238" : "#4b607b"} />
+            <Text style={[s.navLabel, tab === id && s.navActive]}>
               {label}
+              {id === "alertas" && p.pending > 0 ? " •" : ""}
             </Text>
           </Pressable>
         ))}
@@ -537,187 +460,141 @@ export default function DriverWorkspace(props: Props) {
   );
 }
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f5f8fb" },
-  top: {
-    paddingHorizontal: 22,
-    paddingTop: 30,
-    paddingBottom: 8,
-    backgroundColor: "#fff",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  root: { flex: 1, backgroundColor: "#edf1f5" },
+  header: {
+    backgroundColor: "#102b48",
+    padding: 20,
+    paddingBottom: 26,
+    gap: 6,
   },
-  logo: { width: 205, height: 53 },
-  connection: { fontSize: 11 },
-  content: { padding: 20, paddingBottom: 28, gap: 16 },
-  eyebrow: { fontSize: 10, letterSpacing: 1.5, color: "#8a99aa" },
-  title: { fontSize: 27, fontFamily: "Inter_700Bold", color: "#18344d" },
-  subtitle: { fontSize: 12, color: "#8293a5", lineHeight: 19 },
+  brand: {
+    color: "white",
+    fontFamily: "Inter_700Bold",
+    fontStyle: "italic",
+    fontSize: 23,
+    marginBottom: 12,
+  },
+  greeting: { color: "#bdcee2", fontSize: 18, fontFamily: "Inter_600SemiBold" },
+  heading: {
+    color: "white",
+    fontFamily: "Inter_700Bold",
+    fontSize: 30,
+    lineHeight: 35,
+  },
+  back: {
+    alignSelf: "flex-start",
+    borderRadius: 24,
+    paddingHorizontal: 15,
+    paddingVertical: 9,
+    backgroundColor: "#1c4268",
+    marginBottom: 12,
+  },
+  backText: { color: "white", fontFamily: "Inter_700Bold", fontSize: 16 },
+  content: { padding: 16, gap: 16, paddingBottom: 28 },
+  chip: {
+    backgroundColor: "#108238",
+    borderRadius: 28,
+    alignSelf: "flex-start",
+    paddingHorizontal: 22,
+    paddingVertical: 13,
+  },
+  chipText: { color: "white", fontFamily: "Inter_700Bold", fontSize: 16 },
+  card: {
+    padding: 18,
+    borderRadius: 22,
+    backgroundColor: "white",
+    gap: 16,
+    elevation: 2,
+    shadowColor: "#102b48",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+  },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    gap: 8,
+    alignItems: "flex-start",
+    gap: 10,
   },
-  back: { fontSize: 15, color: "#2b6b98", fontFamily: "Inter_600SemiBold" },
-  routeTitle: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#1e3b54" },
-  routeCard: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#e1e9f0",
-    borderRadius: 15,
-    padding: 18,
-    gap: 16,
-  },
-  pill: {
-    alignSelf: "flex-start",
-    backgroundColor: "#edf2f6",
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  pillDone: { backgroundColor: "#e6f6f1" },
-  pillActive: { backgroundColor: "#e5f0fa" },
-  pillText: { fontSize: 10, color: "#2d668e", fontFamily: "Inter_600SemiBold" },
-  progressHeading: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 7,
-  },
-  caption: { fontSize: 8, color: "#98a6b3", letterSpacing: 0.5 },
-  percent: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#43748e" },
-  progressTrack: {
-    height: 5,
-    backgroundColor: "#edf2f6",
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  progressFill: { height: 5, backgroundColor: "#387fa7", borderRadius: 8 },
-  metrics: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
-  metric: {
-    fontSize: 11,
-    color: "#29465e",
-    fontFamily: "Inter_600SemiBold",
-    marginTop: 5,
-  },
-  cardFooter: {
-    flexDirection: "row",
-    gap: 22,
-    alignItems: "center",
-    paddingTop: 4,
-  },
-  stat: { borderLeftWidth: 3, borderLeftColor: "#26bca5", paddingLeft: 8 },
-  statNumber: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#2f536e" },
-  small: { fontSize: 10, color: "#8495a7", lineHeight: 16 },
-  openRoute: {
-    marginLeft: "auto",
-    color: "#2e729c",
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-  },
-  destination: { fontSize: 11, color: "#8091a2", lineHeight: 17 },
-  filters: { gap: 8, paddingVertical: 2 },
-  filter: {
-    paddingVertical: 7,
-    paddingHorizontal: 13,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#e0e8ee",
-    backgroundColor: "#fff",
-  },
-  filterSelected: { backgroundColor: "#e5f0f6", borderColor: "#82b0c6" },
-  filterText: { fontSize: 11, color: "#8a99a8" },
-  health: { backgroundColor: "#eaf2f9", borderRadius: 12, padding: 13, gap: 5 },
-  healthTitle: {
-    fontSize: 12,
-    color: "#385a76",
-    fontFamily: "Inter_600SemiBold",
-  },
-  notice: {
-    padding: 12,
-    backgroundColor: "#e8f7f1",
-    color: "#258f78",
-    borderRadius: 10,
-    fontSize: 11,
-    lineHeight: 18,
-  },
-  error: {
-    padding: 12,
-    backgroundColor: "#fff0f0",
-    color: "#be3b45",
-    borderRadius: 10,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  timelineRow: { flexDirection: "row", gap: 10 },
-  rail: { width: 28, alignItems: "center", position: "relative" },
-  railLine: {
-    position: "absolute",
-    width: 2,
-    top: 0,
-    bottom: -16,
-    backgroundColor: "#9ed1d1",
-  },
-  circle: {
-    width: 25,
-    height: 25,
-    borderRadius: 13,
-    borderWidth: 2,
-    borderColor: "#a4c0cf",
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 12,
-  },
-  circleStart: { borderColor: "#2f87a6", backgroundColor: "#2f87a6" },
-  circleDone: { borderColor: "#24b4a1", backgroundColor: "#24b4a1" },
-  circleText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
-  stopCard: {
+  routeTitle: {
     flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e1eaf0",
-    padding: 15,
-    gap: 9,
+    fontFamily: "Inter_700Bold",
+    fontSize: 27,
+    lineHeight: 31,
   },
-  stopActive: { borderColor: "#75b9c4", borderWidth: 1.5 },
-  stopTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#24455d" },
-  address: { fontSize: 12, color: "#7c8fa1", lineHeight: 19 },
-  eta: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#3c829c" },
-  action: {
-    borderRadius: 9,
-    padding: 12,
-    backgroundColor: "#2f80aa",
+  badge: {
+    backgroundColor: "#d8e6ff",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    maxWidth: 112,
+  },
+  badgeText: { color: "#124277", fontFamily: "Inter_700Bold", fontSize: 13 },
+  amber: { backgroundColor: "#ffe7a3" },
+  green: { backgroundColor: "#dcf2e4" },
+  plate: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 15,
+    letterSpacing: 1,
+    borderWidth: 1.5,
+    borderColor: "#102b48",
+    borderRadius: 4,
+    alignSelf: "flex-start",
+    paddingHorizontal: 5,
+    marginTop: -10,
+  },
+  metrics: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
+  label: { fontFamily: "Inter_600SemiBold", fontSize: 12, color: "#4b607b" },
+  metric: { fontFamily: "Inter_700Bold", fontSize: 19 },
+  tiles: { flexDirection: "row", gap: 10 },
+  tile: { flex: 1, backgroundColor: "#f0f4fa", borderRadius: 15, padding: 12 },
+  number: { fontFamily: "Inter_700Bold", fontSize: 26 },
+  value: { fontFamily: "Inter_700Bold", fontSize: 16 },
+  address: { fontSize: 14, lineHeight: 20, color: "#33465f" },
+  button: {
+    backgroundColor: "#108238",
+    minHeight: 55,
+    borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
+    padding: 14,
   },
-  actionSecondary: {
-    backgroundColor: "#edf4f9",
+  buttonText: { color: "white", fontFamily: "Inter_700Bold", fontSize: 18 },
+  secondary: {
+    backgroundColor: "#edf2f8",
     borderWidth: 1,
-    borderColor: "#dfebf3",
+    borderColor: "#c4d0e0",
   },
-  actionText: { color: "#fff", fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  disclaimer: { fontSize: 10, color: "#91a0af", lineHeight: 16 },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#edf2f5",
+  delivery: {
+    backgroundColor: "white",
+    borderRadius: 21,
+    padding: 16,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: "#dce3ec",
+    elevation: 2,
+  },
+  deliveryActive: { borderWidth: 2, borderColor: "#108238" },
+  deliveryTitle: { fontFamily: "Inter_700Bold", fontSize: 24 },
+  operation: { alignSelf: "center", minWidth: 210, marginTop: 24 },
+  completed: { backgroundColor: "#dcf2e4", padding: 16, borderRadius: 14 },
+  completedText: { color: "#087535", fontFamily: "Inter_700Bold" },
+  error: { color: "#b22d35", fontSize: 13, lineHeight: 18 },
+  accountRoute: {
+    gap: 10,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
   },
   nav: {
     flexDirection: "row",
-    paddingTop: 10,
-    paddingBottom: 18,
-    backgroundColor: "#fff",
+    backgroundColor: "white",
+    paddingTop: 12,
+    paddingBottom: 12,
     borderTopWidth: 1,
-    borderTopColor: "#e3ebf1",
+    borderTopColor: "#d8e0eb",
   },
   navItem: { flex: 1, alignItems: "center", gap: 3 },
-  navIcon: { fontSize: 18, color: "#9baab8" },
-  navLabel: { fontSize: 10, color: "#9baab8" },
-  navSelected: { color: "#2f7da2", fontFamily: "Inter_600SemiBold" },
+  navIcon: { fontSize: 26, color: "#4b607b" },
+  navLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#4b607b" },
+  navActive: { color: "#108238" },
 });

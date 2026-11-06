@@ -1696,3 +1696,620 @@ legend {
     height: 210px;
   }
 }
+
+/* FAST TRACK — layout aprovado nas referências de novembro de 2026. */
+:root {
+  --blue: #108238;
+  --blue-dark: #096b2b;
+  --ink: #142033;
+  --muted: #4b5e79;
+  --line: #e0e6ef;
+  --surface: #edf1f5;
+  --green: #108238;
+}
+.brand .brand-title {
+  font-style: italic;
+  font-weight: 800 !important;
+  letter-spacing: 0.4px;
+}
+.topbar {
+  background: #102b48;
+  color: white;
+  border: 0;
+}
+.topbar .brand,
+.topbar .nav-active,
+.topbar .account strong {
+  color: white;
+}
+.topbar .nav-active {
+  border-bottom: 4px solid #108238;
+  font-weight: 700;
+}
+.topbar .partner {
+  display: none;
+}
+.topbar .account small {
+  color: #bdcee2;
+}
+.topbar .avatar,
+.topbar .icon-button {
+  background: #1c4268;
+  color: white;
+  border: 0;
+  border-radius: 50%;
+}
+.topbar-inner {
+  height: 80px;
+  padding: 0 40px;
+  gap: 42px;
+}
+.dashboard {
+  max-width: 1280px;
+  padding: 40px;
+}
+.management-dashboard h1 {
+  color: #102b48;
+  font-size: 48px;
+  font-weight: 750;
+  letter-spacing: -1px;
+}
+.management-dashboard h1 span {
+  color: inherit;
+}
+.eyebrow {
+  color: #4b5e79;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+.button {
+  font-size: 16px;
+  font-weight: 750;
+  padding: 16px 24px;
+  border-radius: 14px;
+  min-height: 54px;
+}
+.primary {
+  box-shadow: none;
+}
+.secondary {
+  color: #142033;
+  border-color: #c3cfdf;
+}
+.stat {
+  border: 0;
+  border-top: 5px solid #102b48;
+  border-radius: 20px;
+  box-shadow: 0 2px 7px #102b4810;
+  padding: 22px 24px;
+}
+.stat:nth-child(2) {
+  border-top-color: #e8a500;
+}
+.stat:nth-child(3) {
+  border-top-color: #108238;
+}
+.stat:nth-child(4) {
+  border-top-color: #2f70e5;
+}
+.stat > div {
+  font-size: 16px;
+  font-weight: 650;
+  color: #4b5e79;
+}
+.stat > div svg,
+.stat small .dot {
+  display: none;
+}
+.stat > strong {
+  font-size: 52px;
+  font-weight: 750;
+  margin: 8px 0;
+}
+.stat small {
+  color: #4b5e79;
+  font-size: 14px;
+  font-weight: 550;
+}
+.deliveries-panel {
+  border: 0;
+  border-radius: 22px;
+  box-shadow: 0 2px 8px #102b4812;
+}
+.panel-title h2 {
+  font-size: 30px;
+  font-weight: 750;
+}
+.panel-title h2 .count {
+  display: none;
+}
+.panel-title p {
+  color: #4b5e79;
+  font-size: 16px;
+}
+.icon-button {
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+}
+.search-row {
+  display: flex;
+  gap: 12px;
+}
+.search-input {
+  flex: 1;
+  border-color: #c3cfdf;
+  border-radius: 14px;
+}
+.search-input > svg {
+  display: none;
+}
+.search-input input {
+  font-size: 16px;
+  padding: 16px;
+}
+.search-submit {
+  background: #102b48;
+  color: white;
+}
+.filters {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.filters button,
+.tabs button {
+  border: 1.5px solid #c3cfdf;
+  border-radius: 28px;
+  background: white;
+  color: #142033;
+  font-size: 15px;
+  padding: 13px 20px;
+  font-weight: 700;
+}
+.filters button.active,
+.tabs button.selected {
+  background: #108238;
+  color: white;
+  border-color: #108238;
+}
+.filters button.active span {
+  color: white;
+  background: transparent;
+}
+.filters button span {
+  background: transparent;
+  color: inherit;
+}
+thead {
+  background: #f0f4fa;
+}
+th {
+  color: #4b5e79;
+  font-size: 12px;
+  font-weight: 750;
+}
+td {
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+td strong,
+.row-link {
+  font-size: 17px;
+  font-weight: 750;
+  color: #142033;
+}
+td small {
+  font-size: 13px;
+  color: #4b5e79;
+}
+.vehicle-plate {
+  display: inline-block;
+  border: 1.5px solid #102b48;
+  color: #102b48;
+  font-weight: 750;
+  letter-spacing: 1px;
+  padding: 0 5px;
+  border-radius: 4px;
+}
+.badge {
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 750;
+  padding: 9px 14px;
+}
+.badge i {
+  display: none;
+}
+.badge.em_transporte,
+.badge.ativa {
+  color: #634309;
+  background: #ffe7a3;
+}
+.badge.concluida {
+  color: #07632e;
+  background: #dcf2e4;
+}
+.badge.pendente,
+.badge.planejada {
+  color: #124277;
+  background: #d8e6ff;
+}
+.modal-backdrop {
+  background: #102b48bb;
+  backdrop-filter: none;
+}
+.modal {
+  border: 0;
+  border-radius: 24px;
+}
+.modal:has(.admin-form) {
+  width: 800px;
+}
+.modal-wide {
+  width: 1084px;
+}
+.modal-heading {
+  background: #102b48;
+  padding: 25px 32px;
+  color: white;
+  align-items: center;
+}
+.modal-heading h2 {
+  font-size: 30px;
+  font-weight: 750;
+}
+.modal-heading p {
+  color: #bdcee2;
+  font-size: 16px;
+  font-weight: 600;
+}
+.modal-heading .icon-button {
+  background: #1c4268;
+  color: white;
+  border: 0;
+}
+.tabs {
+  padding: 20px 32px;
+  flex-wrap: wrap;
+}
+.admin-form {
+  padding: 28px 32px 20px;
+  gap: 20px;
+}
+.admin-form label {
+  font-size: 15px;
+  font-weight: 650;
+  color: #142033;
+}
+input,
+select {
+  border: 1.5px solid #c3cfdf;
+  border-radius: 14px;
+  min-height: 54px;
+  padding: 15px 16px;
+  font-size: 16px;
+}
+input::placeholder {
+  font-size: 16px;
+  color: #808080;
+}
+.admin-form > .muted {
+  background: #d8e6ff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  color: #124277;
+  font-weight: 600;
+}
+.admin-form h3 {
+  font-size: 23px;
+  font-weight: 750;
+}
+.admin-form fieldset {
+  border: 1.5px solid #c3cfdf;
+  padding: 18px;
+  border-radius: 18px;
+}
+.admin-form legend {
+  background: #dcf2e4;
+  color: #07632e;
+  font-weight: 750;
+  padding: 6px 12px;
+  border-radius: 12px;
+}
+.address-picker {
+  background: #f0f4fa;
+  border: 0;
+  border-radius: 18px;
+  padding: 18px;
+}
+.address-picker h4 {
+  font-size: 19px;
+  margin: 0 0 12px;
+}
+.address-lookup .button {
+  background: #102b48;
+  color: white;
+  border-color: #102b48;
+}
+.admin-form > .button.secondary {
+  border: 1.5px dashed #108238;
+  color: #108238;
+}
+.form-footer {
+  margin: 8px -32px -20px;
+  padding: 20px 32px;
+}
+.detail-info {
+  padding: 24px 28px;
+}
+.detail-info h3 {
+  font-size: 25px;
+  font-weight: 750;
+}
+.detail-info dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.detail-field {
+  background: #f0f4fa;
+  border-radius: 16px;
+  padding: 12px;
+  min-width: 0;
+}
+.detail-field dt {
+  font-size: 12px;
+  font-weight: 650;
+  margin: 0 0 4px;
+  color: #4b5e79;
+}
+.detail-field dt svg {
+  display: none;
+}
+.detail-field dd {
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 650;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.detail-field:nth-child(1) {
+  order: 1;
+}
+.detail-field:nth-child(2) {
+  order: 2;
+}
+.detail-field:nth-child(3) {
+  order: 5;
+  grid-column: 1/-1;
+}
+.detail-field:nth-child(4) {
+  order: 3;
+}
+.detail-field:nth-child(5) {
+  order: 4;
+}
+.detail-field:nth-child(6) {
+  order: 7;
+}
+.detail-field:nth-child(7) {
+  order: 6;
+}
+.detail-field:nth-child(8) {
+  order: 8;
+  grid-column: 1/-1;
+  background: #d8e6ff;
+  color: #124277;
+}
+.detail-info .muted {
+  color: #4b5e79;
+  font-size: 12px;
+}
+.map-wrap {
+  background: #f0f4fa;
+  padding: 24px;
+}
+.map {
+  border-radius: 16px;
+  border: 1.5px solid #c3cfdf;
+}
+.map-tool {
+  border-radius: 28px;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 14px 20px;
+}
+.map-tool[aria-pressed="true"] {
+  background: #108238;
+  color: white;
+  border-color: #108238;
+}
+.map-caption,
+.map-note {
+  font-size: 12px;
+  color: #4b5e79;
+}
+.map-external {
+  border: 1.5px solid #c3cfdf;
+  border-radius: 13px;
+  padding: 12px 16px;
+  background: white;
+  font-size: 13px;
+  font-weight: 700;
+  color: #102b48;
+}
+.timeline {
+  padding: 24px 32px;
+}
+.timeline h3 {
+  font-size: 24px;
+}
+.timeline > div {
+  background: #e0f3e8;
+  border-radius: 16px;
+  padding: 16px;
+  margin-top: 12px;
+  color: #07632e;
+}
+.driver-page .driver-progress {
+  display: none;
+}
+.driver-page .route-card {
+  border-radius: 22px;
+}
+.driver-page .route-code {
+  font-size: 25px;
+  font-weight: 750;
+}
+.driver-page .driver-delivery {
+  border-left-color: #108238;
+}
+.driver-page .driver-delivery.em_transporte {
+  border-left-color: #108238;
+}
+@media (max-width: 760px) {
+  .topbar-inner {
+    padding: 0 18px;
+    gap: 18px;
+  }
+  .topbar nav {
+    display: none;
+  }
+  .dashboard {
+    padding: 24px 16px;
+  }
+  .management-dashboard h1 {
+    font-size: 32px;
+  }
+  .stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .stat {
+    padding: 16px;
+  }
+  .stat > div {
+    font-size: 13px;
+  }
+  .stat > strong {
+    font-size: 38px;
+  }
+  .stat small {
+    font-size: 11px;
+  }
+  .page-intro {
+    align-items: flex-start;
+  }
+  .page-intro .button {
+    padding: 12px;
+    font-size: 13px;
+  }
+  .search-row {
+    gap: 8px;
+  }
+  .search-submit {
+    padding: 12px;
+    font-size: 13px;
+  }
+  .modal-heading {
+    padding: 22px;
+  }
+  .modal-heading h2 {
+    font-size: 24px;
+  }
+  .modal-heading p {
+    font-size: 13px;
+  }
+  .tabs {
+    padding: 16px;
+    gap: 8px;
+  }
+  .tabs button {
+    padding: 11px 14px;
+    font-size: 13px;
+  }
+  .admin-form {
+    padding: 22px 18px;
+  }
+  .form-footer {
+    margin: 0 -18px -22px;
+    padding: 18px;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .detail-info {
+    padding: 22px;
+  }
+  .map-wrap {
+    padding: 18px;
+  }
+  .map-tool {
+    padding: 12px;
+    font-size: 13px;
+  }
+  .filters button {
+    font-size: 12px;
+    padding: 11px 13px;
+  }
+  .brand {
+    font-size: 22px;
+  }
+  .account > div {
+    display: none;
+  }
+  .timeline {
+    padding: 22px;
+  }
+}
+
+.driver-page .subheading,
+.driver-page .driver-progress {
+  display: none;
+}
+.driver-page .route-card {
+  background: white;
+  border: 0;
+  box-shadow: 0 2px 8px #102b4810;
+}
+.driver-page .route-card header {
+  padding: 20px 20px 6px;
+}
+.driver-page .route-destinations {
+  padding: 12px 20px;
+}
+.driver-page .route-card > footer {
+  padding: 16px 20px;
+}
+.driver-page .route-card > footer .text-button {
+  background: #108238;
+  color: white;
+  border-radius: 14px;
+  padding: 15px 22px;
+  font-weight: 750;
+}
+.driver-page .driver-delivery {
+  background: white;
+  border: 1px solid #dce3ec;
+  border-radius: 20px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.driver-page .driver-delivery.em_transporte {
+  border: 2px solid #108238;
+}
+.driver-page .driver-delivery > .button {
+  background: #108238;
+  color: white;
+}
+.detail-field .fiscal-code {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+}
+.detail-field .arrival-estimate strong {
+  color: #124277;
+}

@@ -10,11 +10,11 @@
 - Build Next.js com e sem configuração pública, incluindo o endpoint autenticado de trajeto e o worker MapLibre servido na mesma origem.
 - **14 testes Chromium/Playwright**: oito para interfaces, demonstração, configuração e abertura do mapa após check-in; seis para catálogos, CEP, trajeto, previsão, recência e recuperação do mapa. Os testes verificam que um ponto histórico distante não afasta a câmera, a atualização não recria o canvas e o enquadramento manual é preservado. Exercitam falha de blocos e recarregamento com o worker real MapLibre; as imagens de mapa e respostas externas são controladas nos testes. As ações da demonstração não acessam o Supabase. Isso não comprova conectividade com serviços hospedados.
 - O check-in/check-out da demonstração foi exercitado com navegador offline; isso não valida a fila SQLCipher do aplicativo nativo.
-- Bundle JavaScript Android Expo SDK 58 da versão `0.1.3 (4)`, com fontes Inter, nova marca, sequência de paradas e navegação; a exportação não equivale a compilar um APK ou executar um Keystore nativo.
+- Bundle JavaScript Android Expo SDK 58 da versão `0.1.4 (5)`, com fontes Inter, nova marca, sequência de paradas e navegação; a exportação não equivale a compilar um APK ou executar um Keystore nativo.
 - Introspecção nativa anterior: SQLCipher ativado, backup Android desativado, permissões de GPS/background/foreground service/notificação e bloqueio de áudio/armazenamento externo.
 - Formatação e ausência de segredos nos arquivos versionados. O perfil EAS `preview` contém somente URLs públicas e chave publicável Supabase; nunca a chave administrativa.
 
-Nesta correção, foram repetidos os dois testes de mapa (atualização e recuperação), o build web, TypeScript e a exportação Android. As outras 12 verificações de navegador pertencem à validação da interface anterior. Os testes novos de GPS exercitam a implementação com módulos nativos simulados: captura/envio automáticos, veículo parado, deduplicação, rede indisponível, retomada, pausa durante captura, outra conta e permissões. Não validam o intervalo real de execução do Android.
+Na atualização de design foram repetidos os 14 testes de navegador, os 115 testes de lógica, builds web com e sem configuração pública, TypeScript e exportação Android. Os testes novos de GPS exercitam a implementação com módulos nativos simulados: captura/envio automáticos, veículo parado, deduplicação, rede indisponível, retomada, pausa durante captura, outra conta e permissões. Não validam o intervalo real de execução do Android.
 
 ## Evidências recebidas durante a configuração
 
@@ -28,7 +28,7 @@ A inspeção do Expo SDK 58 confirmou que `withExclusiveTransactionAsync` abre o
 
 - Teste automatizado completo de Auth, PostgREST e Realtime contra o projeto hospedado e execução da migration por este agente. O ambiente permanece sem credenciais administrativas injetadas e sem liberação de rede para o domínio Supabase. O diagnóstico `/configuracao` consulta a configuração da Vercel, que é diferente desta máquina.
 - Testes autenticados de isolamento entre usuários no serviço hospedado e leitura de notas pela câmera em aparelhos.
-- Compilação EAS e execução nativa da versão final `0.1.3 (4)` com a nova interface, marca, navegação e previsão. O bundle JavaScript Android dessa versão foi exportado; não equivale ao APK. A sessão Expo está no computador Windows do usuário, sem credenciais equivalentes neste ambiente. A nova configuração de GPS automático precisa ser validada no APK atualizado.
+- Compilação EAS e execução nativa da versão final `0.1.4 (5)` com a nova interface, marca, navegação e previsão. O bundle JavaScript Android dessa versão foi exportado; não equivale ao APK. A sessão Expo está no computador Windows do usuário, sem credenciais equivalentes neste ambiente. A nova configuração de GPS automático precisa ser validada no APK atualizado.
 - Ensaio completo da fila nativa com perda/retorno de conexão. A sincronização online e o envio de posições já foram observados no emulador com `0.1.1 (2)`.
 - Disponibilidade real dos serviços públicos de roteamento a partir da Vercel. Os testes locais exercitam respostas e falhas controladas; a rede deste ambiente não permite consultar esses domínios.
 - GPS em Android físico com tela bloqueada, permissões, force-stop, bateria, persistência e sincronização offline. Localização simulada do emulador deve ser identificada como teste.
@@ -40,3 +40,7 @@ A apresentação em `/demonstracao` usa dados explicitamente fictícios e armaze
 ## Ambiente reutilizável
 
 `install_script` e `start_skill` foram salvos no rascunho do ambiente; a gravação foi confirmada pelo serviço, mas exige publicação pelo produto. Isso não configura variáveis da Vercel ou Expo, não aplica migrations e não fornece credenciais. Nenhuma chave administrativa ou senha foi incorporada ao código.
+
+## Design solicitado pelo usuário
+
+Gestão, modais de cadastro e entrega receberam cabeçalhos azul escuro, ações verdes, cartões de status e campos agrupados conforme as referências. O workspace Android foi simplificado e as funções de GPS, navegação e fila foram mantidas em Conta/Alertas. A exportação JavaScript e a checagem de tipos não substituem a validação visual do APK no Pixel 6 do usuário.

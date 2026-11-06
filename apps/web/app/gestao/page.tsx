@@ -53,17 +53,13 @@ export default function Management() {
   return (
     <>
       <Header profile={profile} />
-      <main className="dashboard">
+      <main className="dashboard management-dashboard">
         <div className="page-intro">
           <div>
             <span className="eyebrow">CENTRAL DE OPERAÇÕES</span>
             <h1>
               Acompanhe suas entregas<span>.</span>
             </h1>
-            <p>
-              Mais visibilidade em cada etapa. Do primeiro quilômetro à última
-              entrega.
-            </p>
           </div>
           <button
             className="button primary"
@@ -156,11 +152,13 @@ export default function Management() {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Busque por cliente, nota fiscal, carga ou rota…"
               />
-              <kbd>Buscar</kbd>
             </div>
-            <span className="search-hint">
-              Sua operação em um só lugar <ArrowDownLeft size={16} />
-            </span>
+            <button
+              className="button search-submit"
+              onClick={() => setQuery(query.trim())}
+            >
+              Buscar
+            </button>
           </div>
           <div className="filters">
             {[
@@ -222,7 +220,11 @@ export default function Management() {
                       </td>
                       <td>
                         <strong>{route.profiles.name}</strong>
-                        <small>{route.vehicles.plate}</small>
+                        <small>
+                          <span className="vehicle-plate">
+                            {route.vehicles.plate}
+                          </span>
+                        </small>
                       </td>
                       <td>
                         <span className={`badge ${d.status}`}>

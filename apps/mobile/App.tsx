@@ -629,7 +629,7 @@ export default function App() {
   );
 }
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#f7f9fc" },
+  screen: { flex: 1, backgroundColor: "#edf1f5" },
   content: { padding: 24, paddingTop: 36, gap: 16 },
   login: { padding: 28, paddingTop: 80, gap: 22 },
   header: {
@@ -666,7 +666,7 @@ const s = StyleSheet.create({
     color: "#18243b",
   },
   button: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#108238",
     padding: 15,
     borderRadius: 9,
     alignItems: "center",
