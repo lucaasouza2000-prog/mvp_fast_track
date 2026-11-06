@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
+  Linking,
   AppState,
   Modal,
   Pressable,
@@ -27,12 +29,16 @@ import {
   labels,
   routeSelection,
   validateOperation,
+  deliveryDirectionsUrl,
   type Delivery,
   type Profile,
   type Route,
+  type ArrivalEstimate,
 } from "@fasttrack/core";
 import { backend, configured } from "./src/backend";
 import { mobileErrorMessage } from "./src/secure-session";
+import DriverWorkspace from "./src/workspace";
+import { deliveryForecast } from "./src/forecast";
 import {
   cached,
   enqueue,
@@ -52,6 +58,16 @@ function Text({ style, ...props }: TextProps) {
     <NativeText
       {...props}
       style={[{ fontFamily: "Inter_400Regular" }, style]}
+    />
+  );
+}
+function BrandMark() {
+  return (
+    <Image
+      source={require("./assets/fast-track-logo.png")}
+      accessibilityLabel="FAST TRACK"
+      style={s.logo}
+      resizeMode="cover"
     />
   );
 }
@@ -99,7 +115,6 @@ export default function App() {
     [error, setError] = useState(""),
     [pending, setPending] = useState(0),
     [health, setHealth] = useState("Rastreamento não iniciado"),
-    [expanded, setExpanded] = useState<string | null>(null),
     [notice, setNotice] = useState(""),
     [operation, setOperation] = useState<{
       route: Route;
@@ -109,8 +124,46 @@ export default function App() {
     [code, setCode] = useState(""),
     [camera, setCamera] = useState(false),
     [permission, requestPermission] = useCameraPermissions();
+  const [estimates, setEstimates] = useState<Record<string, ArrivalEstimate>>(
+    {},
+  );
+  const estimateTargets = JSON.stringify(
+    routes
+      .filter((r) => r.status === "ativa")
+      .flatMap((r) =>
+        r.deliveries
+          .filter((d) => d.status === "em_transporte")
+          .map((d) => [r.id, d.id]),
+      ),
+  );
   const currentUser = useRef(user);
   currentUser.current = user;
+  useEffect(() => {
+    if (!user || !online || estimateTargets === "[]") {
+      setEstimates({});
+      return;
+    }
+    let active = true;
+    let version = 0;
+    const targets = JSON.parse(estimateTargets) as [string, string][];
+    async function load() {
+      const current = ++version;
+      const values = await Promise.all(
+        targets.map(
+          async ([route, delivery]) =>
+            [delivery, await deliveryForecast(route, delivery)] as const,
+        ),
+      );
+      if (active && current === version && currentUser.current === user)
+        setEstimates(Object.fromEntries(values));
+    }
+    void load();
+    const timer = setInterval(() => void load(), 30000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [user, online, estimateTargets]);
   const refresh = useCallback(async (id: string, connected: boolean) => {
     try {
       const local = await cached<Route[]>(id, "routes");
@@ -277,10 +330,38 @@ export default function App() {
           : "Registro salvo offline. Será enviado quando a conexão retornar.",
       );
       await refresh(user, online);
+      if (operation.kind === "check_in" && online) {
+        const updatedRoute = (await cached<Route[]>(user, "routes"))?.find(
+          (r) => r.id === operation.route.id,
+        );
+        const updatedDelivery = updatedRoute?.deliveries.find(
+          (d) => d.id === delivery.id,
+        );
+        if (updatedRoute && updatedDelivery?.status === "em_transporte")
+          Alert.alert(
+            "Carga confirmada",
+            "A rota da entrega está disponível. Deseja abrir a navegação?",
+            [
+              { text: "Agora não", style: "cancel" },
+              {
+                text: "Ver rota da entrega",
+                onPress: () =>
+                  void openDirections(updatedRoute, updatedDelivery),
+              },
+            ],
+          );
+      }
     } catch (e) {
       setError(mobileErrorMessage(e));
     } finally {
       setBusy(false);
+    }
+  }
+  async function openDirections(route: Route, delivery: Delivery) {
+    try {
+      await Linking.openURL(deliveryDirectionsUrl(route, delivery));
+    } catch (e) {
+      setError(mobileErrorMessage(e));
     }
   }
   function track(r: Route) {
@@ -326,7 +407,7 @@ export default function App() {
       <SafeAreaView style={s.screen}>
         <StatusBar style="dark" />
         <ScrollView contentContainerStyle={s.login}>
-          <Text style={s.logo}>↗ FastTrack.</Text>
+          <BrandMark />
           <Text style={s.eyebrow}>FAST ARIAM + NOSTRA VIA</Text>
           <Text style={s.title}>Sua próxima entrega começa aqui.</Text>
           <Text style={s.subtitle}>Acesse sua conta de motorista.</Text>
@@ -359,143 +440,46 @@ export default function App() {
   return (
     <SafeAreaView style={s.screen}>
       <StatusBar style="dark" />
-      <ScrollView contentContainerStyle={s.content}>
-        <View style={s.header}>
-          <Text style={s.logo}>↗ FastTrack.</Text>
-          <Text style={{ color: online ? "#059669" : "#aa7a22", fontSize: 12 }}>
-            {online ? "● Conectado" : "● Sem internet"}
-          </Text>
-        </View>
-        <Text style={s.eyebrow}>
-          OLÁ, {profile?.name.split(" ")[0].toUpperCase() ?? "MOTORISTA"}
-        </Text>
-        <Text style={s.title}>Suas rotas.</Text>
-        <Text style={s.subtitle}>Cada entrega, um novo destino.</Text>
-        <View style={s.notice}>
-          <Text style={s.bold}>{health}</Text>
-          <Text style={s.small}>
-            {pending} registro(s) aguardando confirmação do servidor. GPS
-            continua tentando capturar mesmo sem internet.
-          </Text>
-        </View>
-        {!!error && <Text style={s.error}>{error}</Text>}
-        {!!notice && <Text style={s.success}>{notice}</Text>}
-        {!profile && (
-          <Text style={s.subtitle}>
-            Perfil indisponível. Conecte-se para sincronizar seu cadastro.
-          </Text>
-        )}
-        {routes.length === 0 && (
-          <View style={s.card}>
-            <Text style={s.bold}>Nenhuma rota sincronizada</Text>
-            <Text style={s.subtitle}>
-              Conecte-se para receber as rotas atribuídas pelo gestor.
-            </Text>
-          </View>
-        )}
-        {routes.map((r) => (
-          <View key={r.id} style={s.card}>
-            <View style={s.header}>
-              <Text style={s.bold}>{r.code}</Text>
-              <Text style={s.badge}>{labels[r.status]}</Text>
-            </View>
-            <Text style={s.route}>● {r.origin}</Text>
-            <Text style={s.route}>↳ {r.destination}</Text>
-            <Text style={s.small}>
-              {r.deliveries.filter((d) => d.status === "concluida").length}/
-              {r.deliveries.length} entregas · {r.vehicles.plate}
-            </Text>
-            <Button
-              secondary
-              title={expanded === r.id ? "Recolher entregas" : "Ver entregas"}
-              onPress={() => setExpanded(expanded === r.id ? null : r.id)}
-            />
-            {r.status !== "concluida" && (
-              <Button
-                title="Iniciar / retomar GPS"
-                disabled={busy || !online || pending > 0}
-                onPress={() => track(r)}
-              />
-            )}
-            {expanded === r.id &&
-              [...r.deliveries]
-                .sort(
-                  (a, b) =>
-                    (r.stops.find((s) => s.id === a.stop_id)?.sequence ?? 0) -
-                    (r.stops.find((s) => s.id === b.stop_id)?.sequence ?? 0),
-                )
-                .map((d) => (
-                  <View style={s.delivery} key={d.id}>
-                    <Text style={s.bold}>{d.clients.name}</Text>
-                    <Text style={s.small}>
-                      {d.cargo_code} · {d.weight_kg} kg
-                    </Text>
-                    <Text style={s.small}>
-                      {r.stops.find((stop) => stop.id === d.stop_id)?.address}
-                    </Text>
-                    <Text style={s.badge}>{labels[d.status]}</Text>
-                    {d.status !== "concluida" && (
-                      <Button
-                        title={
-                          d.status === "pendente"
-                            ? "Confirmar carga · check-in"
-                            : "Concluir entrega · check-out"
-                        }
-                        secondary
-                        onPress={() => {
-                          setOperation({
-                            route: r,
-                            delivery: d,
-                            kind:
-                              d.status === "pendente"
-                                ? "check_in"
-                                : "check_out",
-                          });
-                          setCode("");
-                          setCamera(false);
-                          setError("");
-                        }}
-                      />
-                    )}
-                  </View>
-                ))}
-          </View>
-        ))}
-        <Button
-          secondary
-          title="Sincronizar agora"
-          onPress={() => void refresh(user, online)}
-        />
-        <Button
-          secondary
-          title="Pausar coleta GPS"
-          onPress={() => {
-            void stopTracking().then(async () =>
-              setHealth(await trackingHealth()),
-            );
-          }}
-        />
-        <Text style={s.small}>
-          Pausar interrompe a coleta no aparelho. A rota permanece ativa e pode
-          ser retomada com internet. O Android não garante execução após
-          encerramento forçado.
-        </Text>
-        <Text style={s.footer}>{profile?.name}</Text>
-        <Button
-          secondary
-          title="Sair"
-          onPress={() =>
-            Alert.alert(
-              "Sair do FastTrack?",
-              `${pending} registro(s) pendente(s) permanecerão criptografados neste aparelho. Entre com a mesma conta para sincronizar. O GPS será interrompido.`,
-              [
-                { text: "Cancelar", style: "cancel" },
-                { text: "Sair", onPress: () => void logout() },
-              ],
-            )
-          }
-        />
-      </ScrollView>
+      <DriverWorkspace
+        profile={profile}
+        routes={routes}
+        online={online}
+        busy={busy}
+        pending={pending}
+        health={health}
+        error={error}
+        notice={notice}
+        estimates={estimates}
+        onOperation={(route, delivery) => {
+          setOperation({
+            route,
+            delivery,
+            kind: delivery.status === "pendente" ? "check_in" : "check_out",
+          });
+          setCode("");
+          setCamera(false);
+          setError("");
+        }}
+        onDirections={(route, delivery) => void openDirections(route, delivery)}
+        onTrack={track}
+        onSync={() => void refresh(user, online)}
+        onPause={() =>
+          void stopTracking()
+            .then(async () => setHealth(await trackingHealth()))
+            .catch((e) => setError(mobileErrorMessage(e)))
+        }
+        onLogout={() =>
+          Alert.alert(
+            "Sair do FAST TRACK?",
+            pending +
+              " registro(s) pendente(s) permanecerão criptografados. Entre com a mesma conta para sincronizar. O GPS será interrompido.",
+            [
+              { text: "Cancelar", style: "cancel" },
+              { text: "Sair", onPress: () => void logout() },
+            ],
+          )
+        }
+      />
       <Modal
         visible={!!operation}
         animationType="slide"
@@ -584,11 +568,8 @@ const s = StyleSheet.create({
     gap: 8,
   },
   logo: {
-    fontSize: 25,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    color: "#2563eb",
-    letterSpacing: -1,
+    width: 210,
+    height: 54,
   },
   eyebrow: {
     fontSize: 10,

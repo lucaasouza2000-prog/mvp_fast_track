@@ -5,6 +5,9 @@ import { Clock, MapPin, Phone, Truck } from "lucide-react";
 import {
   labels,
   positionFresh,
+  readArrivalEstimate,
+  arrivalTime,
+  type ArrivalEstimate,
   type Route,
   type Delivery,
   type Position,
@@ -32,6 +35,43 @@ export function DeliveryDetail({
       { id: string; kind: string; captured_at: string }[]
     >([]),
     [now, setNow] = useState(Date.now());
+  const [estimate, setEstimate] = useState<ArrivalEstimate | undefined>();
+  useEffect(() => {
+    if (demo) {
+      setEstimate({ status: "unavailable" });
+      return;
+    }
+    if (delivery.status === "concluida") {
+      setEstimate({ status: "completed" });
+      return;
+    }
+    let active = true;
+    const controller = new AbortController();
+    async function loadEstimate() {
+      try {
+        const response = await fetch(
+          "/api/trajeto?rota=" +
+            encodeURIComponent(route.id) +
+            "&entrega=" +
+            encodeURIComponent(delivery.id),
+          { signal: controller.signal },
+        );
+        if (!response.ok) throw new Error("Forecast unavailable");
+        const body = await response.json();
+        if (active) setEstimate(readArrivalEstimate(body.eta));
+      } catch {
+        if (active) setEstimate({ status: "unavailable" });
+      }
+    }
+    setEstimate(undefined);
+    void loadEstimate();
+    const timer = setInterval(() => void loadEstimate(), 20000);
+    return () => {
+      active = false;
+      controller.abort();
+      clearInterval(timer);
+    };
+  }, [route.id, delivery.id, delivery.status, demo]);
   useEffect(() => {
     if (demo) {
       setPositions(demo.state.positions[route.id] ?? []);
@@ -169,11 +209,37 @@ export function DeliveryDetail({
                 ? new Date(route.scheduled_at).toLocaleString("pt-BR")
                 : "Não informada"}
             </dd>
+            <dt>
+              <Clock size={15} /> Previsão de chegada
+            </dt>
+            <dd className="arrival-estimate">
+              {demo ? (
+                "Exemplo sem previsão real"
+              ) : arrivalTime(estimate, now) ? (
+                <>
+                  <strong>Por volta de {arrivalTime(estimate, now)}</strong>
+                  <small>
+                    Estimativa sem trânsito em tempo real ou tempo de parada.
+                  </small>
+                </>
+              ) : estimate?.status === "completed" ? (
+                "Entrega concluída"
+              ) : estimate?.status === "stale" ||
+                estimate?.status === "ready" ? (
+                "Aguardando localização recente"
+              ) : estimate?.status === "waiting" ? (
+                "Aguardando início da rota e localização"
+              ) : estimate ? (
+                "Previsão indisponível no momento"
+              ) : (
+                "Calculando previsão…"
+              )}
+            </dd>
           </dl>
           <p className="muted">
             {demo
               ? "Todas as posições e horários deste exemplo são fictícios. Não há rastreamento real nem ETA."
-              : "O rastreio mostra posições recebidas, sem garantir acompanhamento contínuo. ETA não calculado."}
+              : "Localização conforme os pontos recebidos. A previsão é aproximada e depende de uma captura recente."}
           </p>
         </aside>
       </div>

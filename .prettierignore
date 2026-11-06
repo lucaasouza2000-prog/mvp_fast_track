@@ -6,3 +6,4 @@ package-lock.json
 *.toml
 test-results
 playwright-report
+apps/web/public/maplibre-worker-*.mjs

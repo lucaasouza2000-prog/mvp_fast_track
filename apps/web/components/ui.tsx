@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { supabase, configured } from "../lib/supabase";
 import type { Profile } from "@fasttrack/core";
 import { useInterfacesPreview } from "../lib/interfaces-preview";
@@ -16,11 +17,14 @@ export function Brand() {
   const demo = useDemo();
   return (
     <a className="brand" href={demo ? "/demonstracao" : "/"}>
-      <span className="brand-icon">
-        <RouteIcon size={23} />
-      </span>
-      Fast<span>Track</span>
-      <span className="brand-dot">.</span>
+      <Image
+        src="/fast-track-logo.png"
+        alt="FAST TRACK"
+        width={225}
+        height={58}
+        className="brand-wordmark"
+        priority
+      />
     </a>
   );
 }

@@ -57,6 +57,8 @@ export interface Route {
   origin_lng: number;
   destination: string;
   scheduled_at: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
   status: RouteStatus;
   profiles: Profile;
   vehicles: Vehicle;
@@ -175,10 +177,89 @@ export function positionFresh(
   position: Position | undefined,
   now = Date.now(),
 ): boolean {
+  return !!position && timestampFresh(position.captured_at, now);
+}
+export function timestampFresh(capturedAt: string, now = Date.now()): boolean {
+  const time = Date.parse(capturedAt);
+  return Number.isFinite(time) && now - time < 180000 && now >= time - 30000;
+}
+export type ArrivalEstimate =
+  | {
+      status: "ready";
+      arrives_at: string;
+      captured_at: string;
+      duration_seconds: number;
+    }
+  | { status: "waiting" | "stale" | "completed" | "unavailable" };
+export function readArrivalEstimate(value: unknown): ArrivalEstimate {
+  const item = value as Partial<{
+    status: string;
+    arrives_at: string;
+    captured_at: string;
+    duration_seconds: number;
+  }> | null;
+  if (
+    item?.status === "ready" &&
+    typeof item.arrives_at === "string" &&
+    typeof item.captured_at === "string" &&
+    Number.isFinite(Date.parse(item.arrives_at)) &&
+    Number.isFinite(Date.parse(item.captured_at)) &&
+    typeof item.duration_seconds === "number" &&
+    Number.isFinite(item.duration_seconds) &&
+    item.duration_seconds >= 0
+  )
+    return {
+      status: "ready",
+      arrives_at: item.arrives_at,
+      captured_at: item.captured_at,
+      duration_seconds: item.duration_seconds,
+    };
+  if (
+    item &&
+    ["waiting", "stale", "completed", "unavailable"].includes(item.status ?? "")
+  )
+    return {
+      status: item.status as "waiting" | "stale" | "completed" | "unavailable",
+    };
+  return { status: "unavailable" };
+}
+export function arrivalTime(
+  value: ArrivalEstimate | undefined,
+  now = Date.now(),
+): string | null {
+  return value?.status === "ready" && timestampFresh(value.captured_at, now)
+    ? new Date(value.arrives_at).toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "America/Sao_Paulo",
+      })
+    : null;
+}
+export function deliveryDirectionsUrl(
+  route: Route,
+  delivery: Delivery,
+): string {
+  if (
+    delivery.route_id !== route.id ||
+    !route.deliveries.some((d) => d.id === delivery.id)
+  )
+    throw new Error("Entrega não pertence a esta rota.");
+  if (delivery.status !== "em_transporte")
+    throw new Error("Confirme a coleta antes de abrir a rota da entrega.");
+  const stop = route.stops.find((s) => s.id === delivery.stop_id);
+  if (
+    !stop ||
+    !Number.isFinite(stop.latitude) ||
+    !Number.isFinite(stop.longitude) ||
+    Math.abs(stop.latitude) > 90 ||
+    Math.abs(stop.longitude) > 180
+  )
+    throw new Error("Confira o endereço da entrega antes de abrir a rota.");
+  // Omitting origin lets Maps use the driver's current location, with its permission.
   return (
-    !!position &&
-    now - Date.parse(position.captured_at) < 180_000 &&
-    now >= Date.parse(position.captured_at) - 30_000
+    "https://www.google.com/maps/dir/?api=1&destination=" +
+    encodeURIComponent(stop.latitude + "," + stop.longitude) +
+    "&travelmode=driving"
   );
 }
 export const pointSchema = z.object({

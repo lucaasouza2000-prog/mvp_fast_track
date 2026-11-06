@@ -106,6 +106,12 @@ a svg {
   font-weight: 700;
   white-space: nowrap;
 }
+.brand-wordmark {
+  width: 225px;
+  height: 58px;
+  object-fit: cover;
+  object-position: center;
+}
 .brand > span:not(.brand-icon):not(.brand-dot) {
   font-weight: 500;
 }
@@ -741,6 +747,55 @@ legend {
   color: #728197;
   margin-top: 13px;
 }
+.map-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.map-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #d9e3f5;
+  border-radius: 9px;
+  background: white;
+  color: #49607f;
+  font: inherit;
+  font-size: 12px;
+  padding: 9px 11px;
+  cursor: pointer;
+}
+.map-tool[aria-pressed="true"] {
+  background: #eaf0ff;
+  color: #2563eb;
+  border-color: #bfd0ff;
+}
+.map-tool:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.map-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  margin-top: 12px;
+  border-radius: 9px;
+  background: #fff5e8;
+  color: #91631d;
+  font-size: 12px;
+}
+.map-external {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 9px;
+  font-size: 11px;
+  color: #49607f;
+}
 .map-caption span {
   display: flex;
   align-items: center;
@@ -754,6 +809,46 @@ legend {
 .map-skeleton {
   padding: 50px;
   color: #8b98ab;
+}
+.driver-progress {
+  padding: 0 24px 14px;
+}
+.driver-progress > span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #8b9aaa;
+  margin-bottom: 8px;
+}
+.driver-progress > div {
+  height: 5px;
+  border-radius: 8px;
+  background: #edf2f6;
+  overflow: hidden;
+}
+.driver-progress i {
+  display: block;
+  height: 100%;
+  background: #377fa6;
+  border-radius: 8px;
+}
+.driver-delivery {
+  flex-wrap: wrap;
+  position: relative;
+}
+.driver-delivery > .driver-map-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 100%;
+}
+.driver-deliveries {
+  border-left: 2px solid #a7d3d5;
+  margin-left: 28px;
+}
+.arrival-estimate strong {
+  color: #236f94;
 }
 .detail-info {
   padding: 25px;

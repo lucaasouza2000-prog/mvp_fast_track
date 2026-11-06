@@ -65,7 +65,7 @@ export default function Login() {
       </section>
       <section className="login-form">
         <form onSubmit={submit}>
-          <span className="eyebrow">BEM-VINDO AO FASTTRACK</span>
+          <span className="eyebrow">BEM-VINDO AO FAST TRACK</span>
           <h2>Vamos começar?</h2>
           <p>Acesse sua conta para acompanhar as entregas.</p>
           <label>

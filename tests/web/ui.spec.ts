@@ -1,4 +1,47 @@
 import { test, expect } from "@playwright/test";
+test("após check-in online o motorista recebe o mapa e a navegação da entrega", async ({
+  page,
+}) => {
+  await page.goto("/demonstracao");
+  await page.getByRole("button", { name: "Motorista", exact: true }).click();
+  const route = page.locator(".route-card").filter({ hasText: "DEMO-PR-001" });
+  await route.getByRole("button", { name: "Ver rota", exact: true }).click();
+  const cargo = route
+    .locator(".driver-delivery")
+    .filter({ hasText: "DEMO-001" });
+  await cargo.getByRole("button", { name: "Check-in", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Código fiscal ou chave NF-e" })
+    .fill("NF-DEMO-001");
+  await page
+    .getByRole("button", { name: "Confirmar registro", exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Ver rota", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Fechar", exact: true })
+    .click();
+  await expect(
+    cargo.getByRole("button", { name: "Ver rota da entrega", exact: true }),
+  ).toBeVisible();
+  await expect(
+    cargo.getByRole("link", { name: /Navegar no Google Maps/ }),
+  ).toHaveAttribute("href", /https:\/\/www.google.com\/maps\/dir\//);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "/tmp/fasttrack-motorista-final.png",
+    fullPage: true,
+  });
+});
 test("gestão sem backend informa a configuração e não inventa entregas", async ({
   page,
 }) => {

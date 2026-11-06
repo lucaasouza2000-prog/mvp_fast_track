@@ -11,6 +11,7 @@ import {
 import {
   labels,
   validateOperation,
+  deliveryDirectionsUrl,
   type Delivery,
   type Route,
 } from "@fasttrack/core";
@@ -25,6 +26,7 @@ import { Scanner } from "../../components/scanner";
 import { useWorkspace } from "../../lib/use-workspace";
 import { supabase } from "../../lib/supabase";
 import { useDemo } from "../../lib/demo";
+import { DeliveryDetail } from "../../components/delivery-detail";
 export default function Driver() {
   const demo = useDemo();
   const { profile, routes, loading, error, reload } = useWorkspace("motorista");
@@ -39,6 +41,14 @@ export default function Driver() {
     [busy, setBusy] = useState(false),
     [feedback, setFeedback] = useState(""),
     [failure, setFailure] = useState("");
+  const [mapSelection, setMapSelection] = useState<{
+    route: string;
+    delivery: string;
+  } | null>(null);
+  const mapRoute = routes.find((r) => r.id === mapSelection?.route);
+  const mapDelivery = mapRoute?.deliveries.find(
+    (d) => d.id === mapSelection?.delivery,
+  );
   async function confirm(e: React.FormEvent) {
     e.preventDefault();
     if (!operation) return;
@@ -76,6 +86,11 @@ export default function Driver() {
           : "Entrega concluída com sucesso.",
       );
       await reload();
+      if (operation.kind === "check_in" && navigator.onLine)
+        setMapSelection({
+          route: operation.route.id,
+          delivery: operation.delivery.id,
+        });
     } catch (e) {
       setFailure((e as Error).message);
     } finally {
@@ -123,6 +138,36 @@ export default function Driver() {
                 <span className="route-code">{r.code}</span>
                 <span className={`badge ${r.status}`}>{labels[r.status]}</span>
               </header>
+              <div className="driver-progress">
+                <span>
+                  Progresso das entregas{" "}
+                  <strong>
+                    {r.deliveries.length
+                      ? Math.round(
+                          (r.deliveries.filter((d) => d.status === "concluida")
+                            .length /
+                            r.deliveries.length) *
+                            100,
+                        )
+                      : 0}
+                    %
+                  </strong>
+                </span>
+                <div>
+                  <i
+                    style={{
+                      width:
+                        (r.deliveries.length
+                          ? (r.deliveries.filter(
+                              (d) => d.status === "concluida",
+                            ).length /
+                              r.deliveries.length) *
+                            100
+                          : 0) + "%",
+                    }}
+                  />
+                </div>
+              </div>
               <div className="route-destinations">
                 <div>
                   <i className="dot blue" />
@@ -158,7 +203,7 @@ export default function Driver() {
                           0),
                     )
                     .map((d) => (
-                      <div className="driver-delivery" key={d.id}>
+                      <div className={"driver-delivery " + d.status} key={d.id}>
                         <PackageCheck size={21} />
                         <div>
                           <strong>{d.clients.name}</strong>
@@ -190,6 +235,26 @@ export default function Driver() {
                             {d.status === "pendente" ? "Check-in" : "Check-out"}
                           </button>
                         )}
+                        {d.status === "em_transporte" && (
+                          <div className="driver-map-actions">
+                            <button
+                              className="button secondary"
+                              onClick={() =>
+                                setMapSelection({ route: r.id, delivery: d.id })
+                              }
+                            >
+                              <MapPin size={16} /> Ver rota da entrega
+                            </button>
+                            <a
+                              className="text-button"
+                              href={deliveryDirectionsUrl(r, d)}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Navegar no Google Maps <ArrowRight size={14} />
+                            </a>
+                          </div>
+                        )}
                       </div>
                     ))}
                 </div>
@@ -206,6 +271,13 @@ export default function Driver() {
           {profile?.name ?? "FastTrack"} · Sua próxima entrega começa aqui.
         </footer>
       </main>
+      {mapRoute && mapDelivery && (
+        <DeliveryDetail
+          route={mapRoute}
+          delivery={mapDelivery}
+          onClose={() => setMapSelection(null)}
+        />
+      )}
       {operation && (
         <Modal
           title={

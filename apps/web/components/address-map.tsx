@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import * as maplibregl from "maplibre-gl";
+import * as maplibregl from "../lib/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 type Point = { latitude: number; longitude: number };
 export default function AddressMap({

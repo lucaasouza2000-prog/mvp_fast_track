@@ -5,6 +5,7 @@
       "distribution": "internal",
       "environment": "preview",
       "env": {
+        "EXPO_PUBLIC_WEB_URL": "https://mvpfasttrack.vercel.app",
         "EXPO_PUBLIC_SUPABASE_URL": "https://invejrmtyzhttnapsslx.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_vuiMVIrnhItpUyJLoVWdDg_RlAfJR6V"
       },
