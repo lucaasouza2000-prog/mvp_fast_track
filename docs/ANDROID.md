@@ -16,15 +16,36 @@ npx eas-cli@latest login
 npx eas-cli@latest build --platform android --profile preview
 ```
 
-O `projectId` e o proprietário já estão definidos na configuração. No primeiro build Android, aceite gerar uma nova chave de assinatura quando a CLI perguntar, caso o projeto ainda não tenha uma. As credenciais de assinatura ficam gerenciadas pela conta EAS. EAS Build não foi executado neste ambiente: não há sessão Expo configurada nem APK gerado. Para uso local com Android Studio/SDK/JDK compatíveis, `npm run android` cria um development build. `npm run start` inicia o Metro para esse cliente.
+O `projectId` e o proprietário já estão definidos na configuração. No primeiro build Android, aceite gerar uma nova chave de assinatura quando a CLI perguntar, caso o projeto ainda não tenha uma. As credenciais de assinatura ficam gerenciadas pela conta EAS. O usuário gerou com sucesso o primeiro APK `0.1.0 (1)`, build `2684d727-bdcc-4533-a414-6d1df83eaf3a`, e mostrou sua instalação e abertura no BlueStacks. Este agente não iniciou esse build: não há sessão Expo configurada nesta máquina. Para uso local com Android Studio/SDK/JDK compatíveis, `npm run android` cria um development build. `npm run start` inicia o Metro para esse cliente.
 
-No Windows, use PowerShell e Node.js LTS compatível com `engines.node` do projeto. Depois de obter o repositório, entre na pasta raiz, execute `npm ci` e siga os comandos acima. O login solicita a senha dentro do terminal; não é necessário enviá-la no chat.
+No Windows, use PowerShell e Node.js LTS compatível com `engines.node` do projeto. Depois de obter o repositório, entre na pasta raiz, execute `npm.cmd ci` e siga os comandos acima usando `npx.cmd`. O login acontece no navegador ou no terminal, conforme a versão da CLI; não é necessário enviar a senha no chat.
+
+Se baixou o repositório por ZIP, execute a partir de `apps/mobile`:
+
+```powershell
+$env:EAS_NO_VCS = "1"
+$env:EAS_PROJECT_ROOT = (Resolve-Path "..\..").Path
+npx.cmd eas-cli@27.5.0 login
+npx.cmd eas-cli@27.5.0 build --platform android --profile preview
+```
+
+A raiz explícita inclui `packages/core`, os manifests dos workspaces e o lockfile na compilação remota. Esses comandos foram conferidos com a CLI 27.5.0, usada no primeiro APK. O aviso sobre ausência de controle de versão é esperado ao trabalhar com ZIP.
 
 Após o primeiro build Android bem-sucedido pela CLI, pode-se conectar o repositório `lucaasouza2000-prog/mvp_fast_track` em **Project settings → GitHub** do Expo. Defina **Base directory** como `apps/mobile`. No painel de builds, use branch `main`, plataforma **Android** e perfil **preview** para gerar APKs. A documentação do Expo exige um primeiro build bem-sucedido por CLI antes de iniciar builds pela integração GitHub. Os perfis já definem `image: latest`, exigido por essa integração.
 
 O plugin `expo-sqlite` usa `useSQLCipher:true`; por isso é obrigatório compilar um aplicativo nativo próprio. Expo Go não inclui esse banco criptografado nem fornece validação do serviço de localização exigido. A configuração de câmera remove gravação de áudio.
 
 Baixe o APK do build `preview`, transfira ao aparelho e habilite temporariamente instalação por essa origem (navegador/arquivos). Abra o APK e confirme a instalação. Guarde a chave de assinatura/conta EAS: futuras atualizações precisam da mesma assinatura. APK é distribuição interna; nenhuma publicação na Play Store é necessária.
+
+## Sessão e emuladores
+
+O APK inicial abriu no BlueStacks P64, mas o usuário recebeu uma falha `ExpoSecureStore` ao descriptografar o contador da sessão. Isso não estabelece que a senha esteja incorreta. P64 identifica uma instância Android 9; para comparar o comportamento, use uma instância Android 11 ou superior ou o emulador oficial do Android Studio. O usuário informou que conseguiu baixar o Android Studio; a instalação e o teste de login nesse emulador ainda estão pendentes.
+
+A versão `0.1.1 (2)` recupera metadados e fragmentos de sessão ilegíveis removendo somente as entradas de autenticação afetadas e solicitando novo login. Nunca limpa as chaves SQLCipher, a fila de entregas ou o estado do GPS. Gravações são relidas antes de confirmar persistência; se o Keystore continua falhando, o login informa indisponibilidade do armazenamento seguro. Não há alternativa em texto aberto nem desativação da criptografia. Os testes dessa recuperação usam um adaptador simulado e o SDK Supabase real, não um Keystore físico.
+
+Essa melhoria exige gerar e instalar um novo APK; o primeiro build `0.1.0 (1)` não recebe alterações de código automaticamente. Instale atualizações com o mesmo pacote e assinatura para conservar dados. Não desinstale nem limpe o armazenamento se houver entregas pendentes de sincronização.
+
+No Android Studio, conclua o assistente **Standard**, abra **More Actions → Virtual Device Manager**, crie um dispositivo com imagem Android 11 ou superior compatível com seu computador e inicie-o. Baixe o APK do Expo e arraste o arquivo para a janela do emulador. Use contas e rotas marcadas como teste: a localização do emulador é simulada e não comprova GPS durante uma viagem real.
 
 ## Antes de sair
 

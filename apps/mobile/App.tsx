@@ -32,6 +32,7 @@ import {
   type Route,
 } from "@fasttrack/core";
 import { backend, configured } from "./src/backend";
+import { mobileErrorMessage } from "./src/secure-session";
 import {
   cached,
   enqueue,
@@ -147,16 +148,18 @@ export default function App() {
         await stopTracking();
       setHealth(await trackingHealth());
     } catch (e) {
-      if (currentUser.current === id) setError((e as Error).message);
+      if (currentUser.current === id) setError(mobileErrorMessage(e));
     }
   }, []);
   useEffect(() => {
     void (async () => {
-      const {
-        data: { session },
-      } = await backend.auth.getSession();
-      if (!session) return;
       try {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await backend.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session) return;
         let p = await cached<Profile>(session.user.id, "profile");
         if (!p) {
           const result = await backend
@@ -173,8 +176,8 @@ export default function App() {
         } else {
           await backend.auth.signOut({ scope: "local" });
         }
-      } catch {
-        setError("Conecte-se para carregar seu perfil de motorista.");
+      } catch (e) {
+        setError(mobileErrorMessage(e));
       }
     })();
     const { data } = backend.auth.onAuthStateChange((event) => {
@@ -234,7 +237,7 @@ export default function App() {
       setUser(data.user.id);
       setPassword("");
     } catch (e) {
-      setError((e as Error).message);
+      setError(mobileErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -275,7 +278,7 @@ export default function App() {
       );
       await refresh(user, online);
     } catch (e) {
-      setError((e as Error).message);
+      setError(mobileErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -292,7 +295,7 @@ export default function App() {
             setBusy(true);
             void startTracking(user!, r.id)
               .then(() => refresh(user!, online))
-              .catch((e) => setError(e.message))
+              .catch((e) => setError(mobileErrorMessage(e)))
               .finally(() => setBusy(false));
           },
         },
@@ -300,10 +303,17 @@ export default function App() {
     );
   }
   async function logout() {
-    await stopTracking();
-    await backend.auth.signOut({ scope: "local" });
-    setNotice("");
     setError("");
+    try {
+      await stopTracking();
+      const { error: signOutError } = await backend.auth.signOut({
+        scope: "local",
+      });
+      if (signOutError) throw signOutError;
+      setNotice("");
+    } catch (e) {
+      setError(mobileErrorMessage(e));
+    }
   }
   if (!fontsLoaded && !fontError)
     return (

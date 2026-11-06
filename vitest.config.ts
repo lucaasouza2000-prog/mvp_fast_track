@@ -6,6 +6,10 @@ const requireFromWeb = createRequire(
 export default defineConfig({
   resolve: { alias: { "next/server": requireFromWeb.resolve("next/server") } },
   test: {
-    include: ["packages/core/tests/**/*.test.ts", "tests/server/**/*.test.ts"],
+    include: [
+      "packages/core/tests/**/*.test.ts",
+      "tests/server/**/*.test.ts",
+      "tests/mobile/**/*.test.ts",
+    ],
   },
 });
