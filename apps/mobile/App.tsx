@@ -409,18 +409,7 @@ export default function App() {
           (d) => d.id === delivery.id,
         );
         if (updatedRoute && updatedDelivery?.status === "em_transporte")
-          Alert.alert(
-            "Carga confirmada",
-            "A rota da entrega está disponível. Deseja abrir a navegação?",
-            [
-              { text: "Agora não", style: "cancel" },
-              {
-                text: "Ver rota da entrega",
-                onPress: () =>
-                  void openDirections(updatedRoute, updatedDelivery),
-              },
-            ],
-          );
+          await openDirections(updatedRoute, updatedDelivery);
       }
     } catch (e) {
       setError(mobileErrorMessage(e));

@@ -279,6 +279,13 @@ export default function DriverWorkspace(p: Props) {
                 </View>
               ) : (
                 <View style={s.operation}>
+                  {d.status === "em_transporte" && (
+                    <Button
+                      title="Ver rota da entrega"
+                      secondary
+                      onPress={() => p.onDirections(route, d)}
+                    />
+                  )}
                   <Button
                     title={d.status === "pendente" ? "Check-in" : "Check-out"}
                     disabled={p.busy}
@@ -296,6 +303,9 @@ export default function DriverWorkspace(p: Props) {
             </View>
             {p.routes.map((r) => {
               const stops = ordered(r),
+                collecting = !stops.some((d) => d.status === "em_transporte")
+                  ? stops.find((d) => d.status === "pendente")
+                  : undefined,
                 last = [...stops]
                   .reverse()
                   .find((d) => d.status === "em_transporte");
@@ -351,9 +361,15 @@ export default function DriverWorkspace(p: Props) {
                     title={
                       r.status === "concluida"
                         ? "Ver entregas  →"
-                        : "Confirmar  →"
+                        : collecting
+                          ? "Confirmar  →"
+                          : "Ver rota  →"
                     }
-                    onPress={() => setSelected(r.id)}
+                    disabled={p.busy}
+                    onPress={() => {
+                      setSelected(r.id);
+                      if (collecting) p.onOperation(r, collecting);
+                    }}
                   />
                 </View>
               );
@@ -575,7 +591,7 @@ const s = StyleSheet.create({
   },
   deliveryActive: { borderWidth: 2, borderColor: "#108238" },
   deliveryTitle: { fontFamily: "Inter_700Bold", fontSize: 24 },
-  operation: { alignSelf: "center", minWidth: 210, marginTop: 24 },
+  operation: { alignSelf: "center", minWidth: 210, marginTop: 24, gap: 12 },
   completed: { backgroundColor: "#dcf2e4", padding: 16, borderRadius: 14 },
   completedText: { color: "#087535", fontFamily: "Inter_700Bold" },
   error: { color: "#b22d35", fontSize: 13, lineHeight: 18 },

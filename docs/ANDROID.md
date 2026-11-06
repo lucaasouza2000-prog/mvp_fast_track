@@ -2,7 +2,7 @@
 
 ## Gerar o aplicativo
 
-O aplicativo está vinculado ao projeto Expo `lucas_souza_gm/mvpfasttrack`, ID `4ef6f5b5-dce9-4a36-8a1a-761f876d8b86`. A versão preparada é **0.1.4 (5)**, com nome de exibição **FAST TRACK** e o desenho enviado pelo usuário: cabeçalho azul escuro, ações verdes, lista de rotas e detalhe de entregas com nota, peso e check-in/check-out. O pacote e a assinatura permanecem os mesmos para permitir atualização sobre a versão instalada.
+O aplicativo está vinculado ao projeto Expo `lucas_souza_gm/mvpfasttrack`, ID `4ef6f5b5-dce9-4a36-8a1a-761f876d8b86`. A versão preparada é **0.1.5 (6)**, com nome de exibição **FAST TRACK** e o desenho enviado pelo usuário: cabeçalho azul escuro, ações verdes, lista de rotas e detalhe de entregas com nota, peso e check-in/check-out. O pacote e a assinatura permanecem os mesmos para permitir atualização sobre a versão instalada.
 
 Instale dependências na raiz (`npm ci`). O perfil `preview` de `apps/mobile/eas.json` já inclui a URL e a chave **publicável** do mesmo Supabase usado pelo site e `EXPO_PUBLIC_WEB_URL=https://mvpfasttrack.vercel.app` para consultar a previsão. Esses valores são públicos e ficam embutidos no APK; nenhuma chave administrativa faz parte dessa configuração. O ambiente EAS selecionado para esse perfil é `preview`. O perfil `production` usa o ambiente `production` e exige as duas variáveis `EXPO_PUBLIC_SUPABASE_*` configuradas nesse ambiente antes de gerar um AAB. Nunca configure `service_role` no Expo.
 
@@ -47,13 +47,13 @@ A versão `0.1.1 (2)` recupera metadados e fragmentos de sessão ilegíveis remo
 
 Essa versão também abre uma conexão isolada para cada transação local, aplica a chave SQLCipher antes de consultar o banco e inicia `BEGIN IMMEDIATE`. Confirma ou reverte a operação e fecha a conexão. A conexão principal também é explicitamente configurada com a chave. O arquivo, as tabelas e a chave existente são preservados. Os testes de integração exercitam o armazenamento real do aplicativo com SQLite, modelando a exigência de chave por conexão; eles reproduziram a falha antes da correção. O usuário confirmou a instalação da versão `0.1.1 (2)`, build `44013497-f08f-4418-8643-913270601ab7`, sincronização de rotas, check-in, fila zerada e posição recebida no painel usando o emulador oficial. Isso não valida GPS em aparelho físico ou toda a operação offline.
 
-A versão `0.1.4 (5)` também exige gerar e instalar um novo APK; versões já instaladas não recebem estas alterações de código automaticamente. Ao atualizar fontes de uma cópia ZIP, copie tanto `apps/mobile` quanto `packages/core` antes de iniciar o build. Instale atualizações com o mesmo pacote e assinatura para conservar dados. Não desinstale nem limpe o armazenamento se houver entregas pendentes de sincronização.
+A versão `0.1.5 (6)` também exige gerar e instalar um novo APK; versões já instaladas não recebem estas alterações de código automaticamente. Ao atualizar fontes de uma cópia ZIP, copie tanto `apps/mobile` quanto `packages/core` antes de iniciar o build. Instale atualizações com o mesmo pacote e assinatura para conservar dados. Não desinstale nem limpe o armazenamento se houver entregas pendentes de sincronização.
 
 No Android Studio, conclua o assistente **Standard**, abra **More Actions → Virtual Device Manager**, crie um dispositivo com imagem Android 11 ou superior compatível com seu computador e inicie-o. Baixe o APK do Expo e arraste o arquivo para a janela do emulador. Use contas e rotas marcadas como teste: a localização do emulador é simulada e não comprova GPS durante uma viagem real.
 
 ## Rota e previsão
 
-Após check-in online, a confirmação oferece **Ver rota da entrega**. O botão também fica no detalhe da parada e abre o Google Maps com o destino cadastrado e a origem na posição atual do motorista. No emulador sem Maps instalado, a navegação pode abrir no navegador. Navegação e consulta de previsão exigem conexão; o registro offline continua no armazenamento local até sincronizar.
+Após check-in online, o aplicativo abre a navegação da entrega no Google Maps, com o destino cadastrado e a origem na posição atual do motorista. O botão **Ver rota da entrega** também fica no detalhe da entrega. No emulador sem Maps instalado, a navegação pode abrir no navegador. Navegação e consulta de previsão exigem conexão; o registro offline continua no armazenamento local até sincronizar.
 
 A previsão aparece apenas para carga em transporte, rota ativa e GPS recente recebido pelo servidor. Ela considera o percurso até a entrega e as paradas anteriores em transporte, sem trânsito em tempo real ou tempo de parada. Uma captura com mais de três minutos exige nova posição. No emulador, use **⋮ → Location → Set location** e aguarde a sincronização. O endpoint do site valida a sessão e a atribuição da rota do motorista.
 
@@ -83,4 +83,4 @@ Estrutura de bundle, permissão e background mode estão preparadas. O início d
 
 ## Interface simplificada
 
-A aba Rotas mostra os cartões e o botão Confirmar para abrir as entregas. O detalhe apresenta endereço, nota, peso e check-in/check-out. As métricas usam somente os dados reais; chegada sem previsão aparece como traço. GPS e navegação ficam em Conta. Estado da conexão, fila, mensagens e tentativa manual de sincronização ficam em Alertas, preservando as funções sem ocupar a tela principal. A pausa e o logout mantêm o comportamento anterior.
+Na aba Rotas, **Confirmar** abre diretamente a leitura ou digitação do documento fiscal da primeira carga pendente, em ordem de parada. O código deve corresponder à entrega antes de registrar o check-in. Depois da confirmação, o detalhe permanece aberto, a navegação é aberta online e aparece o check-out. Uma rota com carga já confirmada usa **Ver rota**, sem repetir a coleta. O detalhe apresenta endereço, nota, peso e check-in/check-out. As métricas usam somente os dados reais; chegada sem previsão aparece como traço. GPS e navegação ficam em Conta. Estado da conexão, fila, mensagens e tentativa manual de sincronização ficam em Alertas, preservando as funções sem ocupar a tela principal. A pausa e o logout mantêm o comportamento anterior.
