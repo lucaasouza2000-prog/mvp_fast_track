@@ -10,7 +10,7 @@ Configuração externa: projeto Supabase, migration e primeiro gestor pelo boots
 
 ## Fase 2 — Gestão de rotas
 
-`components/admin.tsx` e `/api/motoristas`: cadastro de contas de motorista, clientes, veículos e rotas. A criação de rota é transacional, com paradas ordenadas e múltiplas entregas/documentos. Chaves estrangeiras compostas impedem relações entre empresas. Informar coordenadas verificadas é obrigatório; não há geocodificação automática. A senha inicial é definida pelo gestor e deve ser entregue por canal seguro. O motorista pode alterá-la pelo fluxo de recuperação de senha configurado no Supabase; este MVP não fornece uma tela de recuperação.
+`components/admin.tsx` e `/api/motoristas`: cadastro de contas de motorista, clientes, veículos e rotas. A criação de rota é transacional, com paradas ordenadas e múltiplas entregas/documentos. Chaves estrangeiras compostas impedem relações entre empresas. O formulário consulta CEP pelo BrasilAPI, com alternativa ViaCEP, e preenche o endereço. O gestor informa número e complemento, confere ou ajusta o pino no mapa e confirma o local. O ponto fornecido pelo CEP é aproximado; se não houver ponto, a confirmação exige marcação manual. Não existem campos numéricos de latitude/longitude no cadastro. A senha inicial é definida pelo gestor e deve ser entregue por canal seguro. O motorista pode alterá-la pelo fluxo de recuperação de senha configurado no Supabase; este MVP não fornece uma tela de recuperação.
 
 Configuração externa: chave administrativa exclusivamente no servidor para criação de contas. Os cadastros de clientes, veículos e rotas usam a sessão normal e RLS.
 

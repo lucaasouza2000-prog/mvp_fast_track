@@ -12,7 +12,7 @@
 
 Use um projeto de homologação e registros marcados como teste. Não confunda coordenadas de teste com viagens reais. Os testes abaixo estão **não executados neste ambiente**, não aprovados.
 
-1. Gestor entra, cadastra um motorista, veículo e clientes; cria rota com três entregas, notas reais de teste e coordenadas verificadas.
+1. Gestor entra, cadastra um motorista, veículo e clientes; cria rota com três entregas, notas reais de teste e endereços buscados por CEP, com número e ponto confirmado no mapa.
 2. Motorista entra no APK com a conta atribuída. Outra conta/empresa não pode consultar a rota. Web também deve redirecionar corretamente por perfil.
 3. Leia QR de nota com URL contendo chave, Code 128, chave de 44 dígitos e código curto cadastrado. Compare entrada manual. Documento errado deve ser rejeitado. Número repetido em outra entrega não deve validar a carga errada.
 4. Faça check-in das três cargas, confirme sincronização e eventos no painel. Check-out antes de check-in deve ser rejeitado inclusive por chamada RPC direta.
@@ -29,3 +29,12 @@ Use um projeto de homologação e registros marcados como teste. Não confunda c
 ## Registro dos resultados
 
 Para cada teste físico registre: data/hora e fuso, modelo, Android, versão do APK, rota de homologação, IDs dos eventos/posições, permissões, modo de bateria, resultado observado e evidências sem tokens/segredos. Identifique separadamente aprovado, falhou, não executado e bloqueado. Não publique informações pessoais de localização em logs ou issues públicos.
+
+## Regressões de cadastro e endereço
+
+- Cadastre motorista pela operação real e confira o perfil antes do aviso de sucesso; volte à aba Nova rota e selecione o nome sem recriar conta.
+- Force falha ou demora ao consultar veículos/clientes em homologação: o motorista deve continuar carregando de forma independente.
+- Use Atualizar motoristas em uma conta anteriormente criada com os metadados administrativos corretos da empresa; confira preservação do usuário, senha e UID, criação somente de vínculos faltantes e auditoria. Usuários sem vínculo administrativo, de outra empresa ou com papel de gestor não podem ser promovidos ou movidos por essa ação.
+- Consulte CEP válido, inválido e inexistente. Confira cidade/UF, número e complemento, e a indicação de que o ponto do CEP é aproximado.
+- Verifique alternativa ViaCEP ou ausência de ponto: o formulário deve exigir marcação no mapa, sem gravar coordenadas vazias como zero.
+- Altere CEP, rua ou número depois da confirmação; o endereço deve exigir nova confirmação. Ao remover uma entrega, as demais devem conservar seus próprios endereços.

@@ -189,20 +189,35 @@ test("a demonstração permite cadastrar motorista e rota e restaurar o cenário
     .locator("[name=driver]")
     .selectOption({ label: "João Apresentação" });
   await dialog.locator("[name=vehicle]").selectOption({ index: 1 });
-  await dialog.locator("[name=origin]").fill("Londrina · origem fictícia");
-  await dialog.locator("[name=origin_lat]").fill("-23.31");
-  await dialog.locator("[name=origin_lng]").fill("-51.16");
+  const origin = dialog.getByRole("group", {
+    name: "Origem da rota",
+    exact: true,
+  });
+  await origin.getByLabel("CEP", { exact: true }).fill("00000001");
+  await origin.getByRole("button", { name: "Buscar CEP", exact: true }).click();
+  await origin.getByLabel("Número", { exact: true }).fill("100");
+  await origin
+    .getByRole("button", { name: "Confirmar endereço", exact: true })
+    .click();
   await dialog
     .getByLabel("Cliente", { exact: true })
     .selectOption({ index: 1 });
   await dialog
     .getByLabel("Código da carga", { exact: true })
     .fill("DEMO-NOVA-CARGA");
-  await dialog
-    .getByLabel("Destino · endereço", { exact: true })
-    .fill("Maringá · destino fictício");
-  await dialog.getByLabel("Latitude", { exact: true }).fill("-23.42");
-  await dialog.getByLabel("Longitude", { exact: true }).fill("-51.93");
+  const destination = dialog.getByRole("group", {
+    name: "Destino da entrega 1",
+    exact: true,
+  });
+  await destination.getByLabel("CEP", { exact: true }).fill("00000002");
+  await destination
+    .getByRole("button", { name: "Buscar CEP", exact: true })
+    .click();
+  await destination.getByLabel("Número", { exact: true }).fill("200");
+  await destination
+    .getByRole("button", { name: "Confirmar endereço", exact: true })
+    .click();
+  await expect(dialog.getByLabel(/Latitude|Longitude/)).toHaveCount(0);
   await dialog
     .getByLabel("Chave NF-e ou código fiscal", { exact: true })
     .fill("NF-DEMO-NOVA");

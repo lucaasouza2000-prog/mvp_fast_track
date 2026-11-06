@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import {
   newRouteSchema,
   type Profile,
@@ -10,11 +10,12 @@ import {
 import { supabase } from "../lib/supabase";
 import { Modal } from "./ui";
 import { useDemo } from "../lib/demo";
+import { AddressPicker } from "./address-picker";
+import type { AddressPoint } from "../lib/postal-address";
 type DraftDelivery = {
+  id: string;
   client_id: string;
-  address: string;
-  lat: string;
-  lng: string;
+  point: AddressPoint | null;
   cargo_code: string;
   description: string;
   weight: string;
@@ -22,10 +23,9 @@ type DraftDelivery = {
   fiscal_code: string;
 };
 const blank = (): DraftDelivery => ({
+  id: crypto.randomUUID(),
   client_id: "",
-  address: "",
-  lat: "",
-  lng: "",
+  point: null,
   cargo_code: "",
   description: "",
   weight: "",
@@ -42,39 +42,124 @@ export function Admin({
   onSaved: () => void;
 }) {
   const demo = useDemo();
+  const loadVersion = useRef(0);
   const [tab, setTab] = useState("rota"),
     [drivers, setDrivers] = useState<Profile[]>([]),
     [vehicles, setVehicles] = useState<Vehicle[]>([]),
     [clients, setClients] = useState<Client[]>([]),
+    [origin, setOrigin] = useState<AddressPoint | null>(null),
     [deliveries, setDeliveries] = useState<DraftDelivery[]>([blank()]),
     [busy, setBusy] = useState(false),
+    [driversBusy, setDriversBusy] = useState(false),
+    [syncingDrivers, setSyncingDrivers] = useState(false),
     [error, setError] = useState(""),
+    [catalogError, setCatalogError] = useState(""),
     [message, setMessage] = useState("");
   async function load() {
+    const version = ++loadVersion.current;
     if (demo) {
       setDrivers(demo.state.drivers);
       setVehicles(demo.state.vehicles);
       setClients(demo.state.clients);
       return;
     }
+    setDriversBusy(true);
+    setCatalogError("");
     const db = supabase();
-    const results = await Promise.all([
-      db.from("profiles").select("*").eq("role", "motorista"),
-      db.from("vehicles").select("*"),
-      db.from("clients").select("*"),
+    const errors: Record<string, string> = {};
+    const failure = (resource: string, message: string) => {
+      errors[resource] = message;
+      if (version === loadVersion.current)
+        setCatalogError(Object.values(errors).join(" "));
+    };
+    const outcomes = await Promise.allSettled([
+      (async () => {
+        try {
+          const response = await fetch("/api/motoristas", {
+            cache: "no-store",
+          });
+          const data = await response.json();
+          if (!response.ok || !Array.isArray(data.drivers))
+            throw new Error(
+              data.error ?? "Não foi possível carregar os motoristas.",
+            );
+          if (version === loadVersion.current) setDrivers(data.drivers);
+        } catch (error) {
+          failure(
+            "drivers",
+            error instanceof Error
+              ? error.message
+              : "Não foi possível carregar os motoristas.",
+          );
+        } finally {
+          if (version === loadVersion.current) setDriversBusy(false);
+        }
+      })(),
+      (async () => {
+        try {
+          const result = await db.from("vehicles").select("*");
+          if (result.error) throw result.error;
+          if (version === loadVersion.current)
+            setVehicles((result.data ?? []) as Vehicle[]);
+        } catch {
+          failure("vehicles", "Não foi possível atualizar os veículos.");
+        }
+      })(),
+      (async () => {
+        try {
+          const result = await db.from("clients").select("*");
+          if (result.error) throw result.error;
+          if (version === loadVersion.current)
+            setClients((result.data ?? []) as Client[]);
+        } catch {
+          failure("clients", "Não foi possível atualizar os clientes.");
+        }
+      })(),
     ]);
-    const failure = results.find((r) => r.error);
-    if (failure?.error) {
-      setError(failure.error.message);
+    if (outcomes.some((result) => result.status === "rejected"))
+      failure(
+        "unexpected",
+        "Uma consulta não foi concluída. Atualize os cadastros.",
+      );
+  }
+
+  useEffect(() => {
+    if (tab === "rota" || demo) void load();
+  }, [demo?.state, tab]);
+  async function synchronizeDrivers() {
+    if (demo) {
+      await load();
+      setMessage("Lista de demonstração atualizada.");
       return;
     }
-    setDrivers(results[0].data as unknown as Profile[]);
-    setVehicles(results[1].data as unknown as Vehicle[]);
-    setClients(results[2].data as unknown as Client[]);
+    ++loadVersion.current;
+    setDriversBusy(false);
+    setSyncingDrivers(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/motoristas/sincronizar", {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (!response.ok || !Array.isArray(data.drivers))
+        throw new Error(
+          data.error ?? "Não foi possível conferir os motoristas.",
+        );
+      ++loadVersion.current;
+      setDrivers(data.drivers);
+      setMessage(
+        data.drivers.length
+          ? `${data.drivers.length} motorista(s) disponível(is) para esta empresa.`
+          : "Nenhum motorista vinculado à sua empresa foi encontrado. Confira se o cadastro foi concluído na operação real.",
+      );
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSyncingDrivers(false);
+    }
   }
-  useEffect(() => {
-    void load();
-  }, [demo?.state]);
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -99,6 +184,19 @@ export function Admin({
           });
           const json = await r.json();
           if (!r.ok) throw new Error(json.error);
+          if (
+            !json.ok ||
+            !json.driver?.id ||
+            json.driver.tenant_id !== profile.tenant_id ||
+            json.driver.role !== "motorista"
+          )
+            throw new Error(
+              "A conta não teve seu vínculo confirmado. Use Atualizar motoristas antes de cadastrar novamente.",
+            );
+          setDrivers((current) => [
+            ...current.filter((d) => d.id !== json.driver.id),
+            json.driver,
+          ]);
         }
       } else if (tab === "veiculo" || tab === "cliente") {
         if (demo) {
@@ -120,25 +218,21 @@ export function Admin({
           if (e) throw e;
         }
       } else {
+        if (!origin || deliveries.some((d) => !d.point))
+          throw new Error(
+            "Busque o CEP e confirme o endereço da origem e de todas as entregas antes de criar a rota.",
+          );
         const data = newRouteSchema.safeParse({
           code: text("code"),
           driver_id: text("driver"),
           vehicle_id: text("vehicle"),
-          origin: {
-            address: text("origin"),
-            latitude: Number(text("origin_lat")),
-            longitude: Number(text("origin_lng")),
-          },
+          origin,
           scheduled_at: text("scheduled")
             ? new Date(text("scheduled")).toISOString()
             : null,
           deliveries: deliveries.map((d) => ({
             client_id: d.client_id,
-            destination: {
-              address: d.address,
-              latitude: Number(d.lat),
-              longitude: Number(d.lng),
-            },
+            destination: d.point,
             cargo_code: d.cargo_code,
             description: d.description,
             weight_kg: Number(d.weight),
@@ -169,7 +263,11 @@ export function Admin({
       setBusy(false);
     }
   }
-  function patch(i: number, key: keyof DraftDelivery, value: string) {
+  function patch(
+    i: number,
+    key: Exclude<keyof DraftDelivery, "id" | "point">,
+    value: string,
+  ) {
     setDeliveries((ds) =>
       ds.map((d, index) => (index === i ? { ...d, [key]: value } : d)),
     );
@@ -282,14 +380,37 @@ export function Admin({
               </label>
               <label>
                 Motorista
-                <select name="driver" required>
-                  <option value="">Selecione</option>
+                <select
+                  name="driver"
+                  aria-label="Motorista"
+                  required
+                  disabled={driversBusy || syncingDrivers}
+                >
+                  <option value="">
+                    {driversBusy
+                      ? "Carregando motoristas…"
+                      : drivers.length
+                        ? "Selecione"
+                        : "Nenhum motorista disponível"}
+                  </option>
                   {drivers.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}
                     </option>
                   ))}
                 </select>
+                <span className="driver-catalog-actions">
+                  <span>{drivers.length} motorista(s) disponível(is)</span>
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={driversBusy || syncingDrivers}
+                    onClick={() => void synchronizeDrivers()}
+                  >
+                    <RefreshCw size={13} />
+                    {syncingDrivers ? "Conferindo…" : "Atualizar motoristas"}
+                  </button>
+                </span>
               </label>
               <label>
                 Veículo
@@ -303,43 +424,16 @@ export function Admin({
                 </select>
               </label>
             </div>
-            <label>
-              Origem · endereço
-              <input name="origin" required />
-            </label>
-            <div className="form-grid">
-              <label>
-                Latitude da origem
-                <input
-                  name="origin_lat"
-                  type="number"
-                  step="any"
-                  min={-90}
-                  max={90}
-                  required
-                />
-              </label>
-              <label>
-                Longitude da origem
-                <input
-                  name="origin_lng"
-                  type="number"
-                  step="any"
-                  min={-180}
-                  max={180}
-                  required
-                />
-              </label>
-            </div>
-            <p className="muted">
-              Use coordenadas verificadas do endereço. O trajeto pelas vias será
-              consultado no mapa; não geramos posições fictícias.
-            </p>
+            <AddressPicker
+              title="Origem da rota"
+              value={origin}
+              onChange={setOrigin}
+            />
             <h3>
               Entregas <span className="count">{deliveries.length}</span>
             </h3>
             {deliveries.map((d, i) => (
-              <fieldset key={i}>
+              <fieldset key={d.id}>
                 <legend>Entrega {i + 1}</legend>
                 <div className="form-grid">
                   <label>
@@ -367,40 +461,17 @@ export function Admin({
                     />
                   </label>
                 </div>
-                <label>
-                  Destino · endereço
-                  <input
-                    required
-                    value={d.address}
-                    onChange={(e) => patch(i, "address", e.target.value)}
-                  />
-                </label>
-                <div className="form-grid">
-                  <label>
-                    Latitude
-                    <input
-                      type="number"
-                      step="any"
-                      min={-90}
-                      max={90}
-                      required
-                      value={d.lat}
-                      onChange={(e) => patch(i, "lat", e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Longitude
-                    <input
-                      type="number"
-                      step="any"
-                      min={-180}
-                      max={180}
-                      required
-                      value={d.lng}
-                      onChange={(e) => patch(i, "lng", e.target.value)}
-                    />
-                  </label>
-                </div>
+                <AddressPicker
+                  title={`Destino da entrega ${i + 1}`}
+                  value={d.point}
+                  onChange={(point) =>
+                    setDeliveries((current) =>
+                      current.map((item) =>
+                        item.id === d.id ? { ...item, point } : item,
+                      ),
+                    )
+                  }
+                />
                 <label>
                   Chave NF-e ou código fiscal
                   <input
@@ -465,9 +536,11 @@ export function Admin({
             </button>
           </>
         )}
-        {error && (
+        {(error || (tab === "rota" && catalogError)) && (
           <p className="error" role="alert">
-            {error}
+            {[error, tab === "rota" ? catalogError : ""]
+              .filter(Boolean)
+              .join(" ")}
           </p>
         )}
         {message && (

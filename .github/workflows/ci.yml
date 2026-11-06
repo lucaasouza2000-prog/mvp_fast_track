@@ -16,5 +16,6 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:web
+      - run: npm run test:web:cadastros
       - run: EXPO_OFFLINE=1 npx expo export --platform android --output-dir /tmp/fasttrack-android
         working-directory: apps/mobile

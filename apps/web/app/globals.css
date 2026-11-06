@@ -1529,3 +1529,75 @@ legend {
 .table-scroll table {
   min-width: 760px;
 }
+
+.driver-catalog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 400;
+  flex-wrap: wrap;
+}
+.driver-catalog-actions .text-button {
+  font-size: 10px;
+}
+
+.address-picker {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-width: 0;
+}
+.address-picker > h3 {
+  font-size: 13px;
+  color: #607596;
+}
+.address-lookup {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.address-lookup > label {
+  flex: 1;
+  max-width: 280px;
+}
+.address-city {
+  font-size: 12px;
+  color: #647895;
+}
+.address-map {
+  height: 240px;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #edf2f8;
+}
+.address-picker > .button {
+  align-self: flex-start;
+}
+.address-picker .notice {
+  margin: 0;
+}
+.address-picker .success {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .address-picker {
+    padding: 15px;
+  }
+  .address-lookup {
+    gap: 9px;
+  }
+  .address-lookup > .button {
+    padding: 12px;
+    font-size: 11px;
+  }
+  .address-map {
+    height: 210px;
+  }
+}

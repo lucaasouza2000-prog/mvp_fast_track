@@ -24,7 +24,7 @@ Preencha a URL e a chave pública **do mesmo projeto** nos dois aplicativos. Con
 2. Desative cadastro público no Supabase Auth. Configure a URL do site e URLs de redirecionamento autorizadas para seu domínio. Não permita que clientes controlem `app_metadata`.
 3. Copie `.env.example` para `.env` na raiz e preencha os campos administrativos (`TENANT_NAME`, `GESTOR_*`, URL e service role). Use senha com pelo menos 12 caracteres.
 4. Execute **uma vez** `node --env-file=.env scripts/bootstrap.mjs`. O script cria a empresa e o primeiro gestor. Não é um seed automático nem é idempotente: uma repetição com outro e-mail cria outra empresa.
-5. Execute `npm run dev`, acesse `/login`, entre com o gestor e abra **Nova rota**. Cadastre primeiro motorista, veículo e cliente; crie a rota com uma ou mais entregas. Informe endereços e coordenadas reais verificadas, código da carga e chave/código fiscal.
+5. Execute `npm run dev`, acesse `/login`, entre com o gestor e abra **Nova rota**. Cadastre primeiro motorista, veículo e cliente; crie a rota com uma ou mais entregas. Busque o CEP da origem e de cada entrega, informe o número e confirme o ponto no mapa. Informe também código da carga e chave/código fiscal. O CEP fornece uma localização aproximada; confira a entrada correta antes de salvar.
 
 O motorista usa as credenciais cadastradas em `/motorista` ou no app Android. A câmera web requer HTTPS ou localhost e permissão. Interface responsiva web permite consultas e check-in/check-out online; GPS em segundo plano e fila offline pertencem ao APK.
 
@@ -40,7 +40,8 @@ npm test                    # regras fiscais e sincronização
 npm run test:db             # PostgreSQL WASM, migration real e RLS
 npm run build               # produção web
 npm run start -w @fasttrack/web  # executar build web
-npm run test:web            # servidor acima ativo, sem variáveis Supabase
+npm run test:web            # build sem variáveis Supabase
+npm run test:web:cadastros  # build de teste e gestão com APIs simuladas
 npm run format:check
 ```
 

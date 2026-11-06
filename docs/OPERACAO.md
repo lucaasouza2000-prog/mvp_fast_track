@@ -36,3 +36,17 @@ Esses sinais não comprovam senha correta, permissão do usuário conectado, rec
 Para rastrear uma viagem real com tela bloqueada, gere e instale o APK próprio, configure o mesmo Supabase e execute `ANDROID.md` e `ACEITACAO.md` em um aparelho físico. A implementação inclui serviço nativo, permissões, notificação e fila criptografada, mas não há evidência física nesta sessão de compilação nativa, câmera, GPS com tela bloqueada ou sincronização SQLite após perda de conexão. O cenário offline da apresentação testa apenas a simulação local do navegador.
 
 Antes de liberar uma operação real, confirme acesso de cada papel, cadastro de três entregas, recusa de documento errado, ausência de duplicidade após reenvio, conclusão parcial/total, retomada do painel e testes físicos Android. Defina também a retenção e o tratamento das posições pela empresa.
+
+## Motorista não aparece na rota
+
+Na operação real, a aba Nova rota consulta uma lista autenticada no servidor, restrita à empresa do gestor. O carregamento de motoristas não aguarda o sucesso de veículos ou clientes. Após criar uma conta, o servidor confirma o perfil `motorista`, o vínculo com a empresa e o registro operacional antes de responder com sucesso.
+
+Use **Atualizar motoristas** para conferir contas anteriores. A ação pode completar um perfil ausente somente quando os metadados administrativos do Auth já identificam aquela mesma empresa e o papel de motorista. Não cria outra conta, não troca senha, não promove gestores, não vincula uma conta de outra empresa e registra os vínculos recuperados na auditoria. Contas criadas diretamente no painel sem esses metadados precisam de revisão administrativa; não são vinculadas automaticamente por e-mail.
+
+## Endereços por CEP
+
+No cadastro de rota, use **Buscar CEP** na origem e em cada entrega. Confira rua, bairro, cidade e estado, preencha o número (ou S/N) e complemento, e confirme o endereço. O ponto do CEP é aproximado e não é a localização exata do número do imóvel. Clique no mapa ou arraste o pino até o local correto antes de confirmar. Alterar CEP, rua ou número invalida a confirmação anterior. O formulário não exibe campos de latitude ou longitude; os pontos internos continuam sendo usados para mapa e roteamento.
+
+As consultas reais são feitas pelo servidor, apenas para gestores, usando BrasilAPI CEP v2 e ViaCEP como alternativa. Somente o CEP é enviado a esses serviços; nomes de cliente, telefone, número e complemento não são enviados. Há timeout e cache de dados postais por 24 horas. Não há chave adicional para esses serviços públicos, que não oferecem garantia de disponibilidade. Se não houver ponto retornado, nenhum ponto padrão é salvo: o gestor precisa marcar o local no mapa. As rotas existentes permanecem intactas e esta atualização não exige nova migration.
+
+Na apresentação, use os CEPs **fictícios** `00000-001` (Londrina), `00000-002` (Maringá) e `00000-003` (Campo Mourão). Eles só funcionam no exemplo local e não representam CEPs reais.
