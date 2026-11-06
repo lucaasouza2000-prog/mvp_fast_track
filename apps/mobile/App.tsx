@@ -52,6 +52,8 @@ import {
   startTracking,
   stopTracking,
   trackingHealth,
+  captureTrackingPosition,
+  LOCATION_INTERVAL_MS,
 } from "./src/tracking";
 function Text({ style, ...props }: TextProps) {
   return (
@@ -137,6 +139,7 @@ export default function App() {
       ),
   );
   const currentUser = useRef(user);
+  const refreshing = useRef(new Map<string, Promise<void>>());
   currentUser.current = user;
   useEffect(() => {
     if (!user || !online || estimateTargets === "[]") {
@@ -164,46 +167,62 @@ export default function App() {
       clearInterval(timer);
     };
   }, [user, online, estimateTargets]);
-  const refresh = useCallback(async (id: string, connected: boolean) => {
-    try {
-      const local = await cached<Route[]>(id, "routes");
-      if (currentUser.current !== id) return;
-      if (local) setRoutes(local);
-      const p = await cached<Profile>(id, "profile");
-      if (currentUser.current !== id) return;
-      if (p) setProfile(p);
-      if (connected) {
-        await sync(id);
-        const result = await backend
-          .from("routes")
-          .select(routeSelection)
-          .order("created_at", { ascending: false });
-        if (result.error) throw result.error;
-        await saveRemoteRoutes(id, result.data as unknown as Route[]);
-        const latest = await cached<Route[]>(id, "routes");
-        if (currentUser.current !== id) return;
-        setRoutes(latest ?? []);
-      }
-      const q = await queue(id);
-      if (currentUser.current !== id) return;
-      setPending(q.length);
-      if (q[0]?.error)
-        setError(
-          `Sincronização pendente: ${q[0].error}. O registro foi preservado.`,
-        );
-      else setError("");
-      const active = await activeTracking();
-      const rs = await cached<Route[]>(id, "routes");
-      if (
-        active?.user === id &&
-        rs?.some((r) => r.id === active.route && r.status === "concluida")
-      )
-        await stopTracking();
-      setHealth(await trackingHealth());
-    } catch (e) {
-      if (currentUser.current === id) setError(mobileErrorMessage(e));
-    }
-  }, []);
+  const refresh = useCallback(
+    (id: string, connected: boolean): Promise<void> => {
+      const pendingRefresh = refreshing.current.get(id);
+      if (pendingRefresh) return pendingRefresh;
+      const task = (async () => {
+        try {
+          const local = await cached<Route[]>(id, "routes");
+          if (currentUser.current !== id) return;
+          if (local) setRoutes(local);
+          const p = await cached<Profile>(id, "profile");
+          if (currentUser.current !== id) return;
+          if (p) setProfile(p);
+          if (connected) {
+            await sync(id);
+            const result = await backend
+              .from("routes")
+              .select(routeSelection)
+              .order("created_at", { ascending: false });
+            if (result.error) throw result.error;
+            await saveRemoteRoutes(id, result.data as unknown as Route[]);
+            const latest = await cached<Route[]>(id, "routes");
+            if (currentUser.current !== id) return;
+            setRoutes(latest ?? []);
+          }
+          const q = await queue(id);
+          if (currentUser.current !== id) return;
+          setPending(q.length);
+          if (q[0]?.error)
+            setError(
+              `Sincronização pendente: ${q[0].error}. O registro foi preservado.`,
+            );
+          else setError("");
+          if (!q.length)
+            setNotice((current) =>
+              current.startsWith("Registro salvo")
+                ? "Registro confirmado no servidor. As alterações são sincronizadas automaticamente."
+                : current,
+            );
+          const active = await activeTracking();
+          const rs = await cached<Route[]>(id, "routes");
+          if (
+            active?.user === id &&
+            rs?.some((r) => r.id === active.route && r.status === "concluida")
+          )
+            await stopTracking();
+          setHealth(await trackingHealth());
+        } catch (e) {
+          if (currentUser.current === id) setError(mobileErrorMessage(e));
+        }
+      })();
+      refreshing.current.set(id, task);
+      void task.finally(() => refreshing.current.delete(id));
+      return task;
+    },
+    [],
+  );
   useEffect(() => {
     void (async () => {
       try {
@@ -256,11 +275,63 @@ export default function App() {
     const listener = AppState.addEventListener("change", (state) => {
       if (state === "active") void refresh(user, online);
     });
+    const channel = online
+      ? backend
+          .channel("mobile-workspace-" + user)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "routes",
+              filter: "driver_id=eq." + user,
+            },
+            () => void refresh(user, true),
+          )
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "deliveries" },
+            () => void refresh(user, true),
+          )
+          .subscribe()
+      : null;
     return () => {
       clearInterval(timer);
       listener.remove();
+      if (channel) void backend.removeChannel(channel);
     };
   }, [user, online, refresh]);
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const capture = () => {
+      void captureTrackingPosition(user)
+        .then(async () => {
+          const [nextHealth, items] = await Promise.all([
+            trackingHealth(),
+            queue(user),
+          ]);
+          if (active && currentUser.current === user) {
+            setHealth(nextHealth);
+            setPending(items.length);
+          }
+        })
+        .catch((e) => {
+          if (active && currentUser.current === user)
+            setError(mobileErrorMessage(e));
+        });
+    };
+    capture();
+    const timer = setInterval(capture, LOCATION_INTERVAL_MS);
+    const listener = AppState.addEventListener("change", (state) => {
+      if (state === "active") capture();
+    });
+    return () => {
+      active = false;
+      clearInterval(timer);
+      listener.remove();
+    };
+  }, [user]);
   async function login() {
     setBusy(true);
     setError("");

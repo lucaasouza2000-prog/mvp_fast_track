@@ -8,10 +8,128 @@ import { cached, put, enqueue, sync } from "./store";
 import type { Route } from "@fasttrack/core";
 const TASK = "fasttrack-location-v1",
   KEY = "fasttrack-active-route";
+export const LOCATION_INTERVAL_MS = 15000;
 export type ActiveTracking = { user: string; route: string; startedAt: number };
 export async function activeTracking(): Promise<ActiveTracking | null> {
   const raw = await SecureStore.getItemAsync(KEY);
   return raw ? JSON.parse(raw) : null;
+}
+function locationOptions(): Location.LocationTaskOptions {
+  return {
+    accuracy: Location.Accuracy.High,
+    timeInterval: LOCATION_INTERVAL_MS,
+    distanceInterval: 0,
+    deferredUpdatesInterval: 0,
+    pausesUpdatesAutomatically: false,
+    foregroundService: {
+      notificationTitle: "FAST TRACK · GPS automático",
+      notificationBody: "Enviando sua localização durante a rota ativa.",
+      notificationColor: "#2563eb",
+      killServiceOnDestroy: false,
+    },
+    showsBackgroundLocationIndicator: true,
+  };
+}
+let savingLocations: Promise<void> = Promise.resolve();
+async function recordLocations(
+  active: ActiveTracking,
+  locations: Location.LocationObject[],
+) {
+  const saving = savingLocations.then(async () => {
+    const current = await activeTracking();
+    if (current?.user !== active.user || current.route !== active.route) return;
+    const routes = await cached<Route[]>(active.user, "routes");
+    if (!routes?.some((r) => r.id === active.route && r.status === "ativa")) {
+      await stopTracking();
+      return;
+    }
+    let last =
+      Number(await SecureStore.getItemAsync("tracking-last-capture")) || 0;
+    let lastFix = await SecureStore.getItemAsync("tracking-last-fix");
+    for (const location of [...locations].sort(
+      (a, b) => a.timestamp - b.timestamp,
+    )) {
+      // Keep device capture times. Never turn an old cached fix into a fresh one.
+      if (
+        !Number.isFinite(location.timestamp) ||
+        location.timestamp < active.startedAt
+      )
+        continue;
+      const fix = JSON.stringify([
+        active.user,
+        active.route,
+        location.timestamp,
+        location.coords.latitude,
+        location.coords.longitude,
+      ]);
+      if (fix === lastFix) continue;
+      await enqueue(active.user, "position", {
+        id: Crypto.randomUUID(),
+        route_id: active.route,
+        driver_id: active.user,
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        accuracy: location.coords.accuracy,
+        captured_at: new Date(location.timestamp).toISOString(),
+      });
+      lastFix = fix;
+      last = Math.max(last, location.timestamp);
+      await SecureStore.setItemAsync("tracking-last-fix", fix);
+      await SecureStore.setItemAsync("tracking-last-capture", String(last));
+    }
+    await SecureStore.deleteItemAsync("tracking-error");
+  });
+  savingLocations = saving.catch(() => {});
+  await saving;
+  const current = await activeTracking();
+  if (current?.user !== active.user || current.route !== active.route) return;
+  try {
+    await sync(active.user);
+  } catch {
+    await SecureStore.setItemAsync(
+      "tracking-error",
+      "GPS salvo no aparelho. O envio será tentado automaticamente.",
+    );
+  }
+}
+let capturing: Promise<void> | null = null;
+/** Foreground heartbeat, also recovering an interrupted service with prior permission.
+ * A manual pause removes KEY, so this never restarts a paused route. */
+export async function captureTrackingPosition(user: string): Promise<void> {
+  if (Platform.OS !== "android" || AppState.currentState !== "active") return;
+  if (capturing) return capturing;
+  capturing = (async () => {
+    const active = await activeTracking();
+    if (!active || active.user !== user) return;
+    if (!(await Location.hasServicesEnabledAsync())) return;
+    const permission = await Location.getForegroundPermissionsAsync();
+    if (
+      permission.status !== "granted" ||
+      permission.android?.accuracy === "coarse" ||
+      (await Location.getBackgroundPermissionsAsync()).status !== "granted"
+    )
+      return;
+    if (!(await Location.hasStartedLocationUpdatesAsync(TASK))) {
+      const current = await activeTracking();
+      if (current?.user !== user || current.route !== active.route) return;
+      await Location.startLocationUpdatesAsync(TASK, locationOptions());
+    }
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+      mayShowUserSettingsDialog: false,
+    });
+    await recordLocations(active, [location]);
+  })();
+  try {
+    await capturing;
+  } catch {
+    await SecureStore.setItemAsync(
+      "tracking-error",
+      "Aguardando uma nova captura GPS. O aplicativo tentará novamente automaticamente.",
+    );
+  } finally {
+    capturing = null;
+  }
 }
 TaskManager.defineTask(TASK, async ({ data, error }) => {
   if (error) {
@@ -26,30 +144,7 @@ TaskManager.defineTask(TASK, async ({ data, error }) => {
   const locations = (data as { locations: Location.LocationObject[] })
     .locations;
   try {
-    const routes = await cached<Route[]>(active.user, "routes");
-    if (!routes?.some((r) => r.id === active.route && r.status === "ativa")) {
-      await stopTracking();
-      return;
-    }
-    for (const location of locations) {
-      // Android may deliver a cached fix from before service activation.
-      if (location.timestamp < active.startedAt) continue;
-      await enqueue(active.user, "position", {
-        id: Crypto.randomUUID(),
-        route_id: active.route,
-        driver_id: active.user,
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        accuracy: location.coords.accuracy,
-        captured_at: new Date(location.timestamp).toISOString(),
-      });
-      await SecureStore.setItemAsync(
-        "tracking-last-capture",
-        String(location.timestamp),
-      );
-    }
-    await SecureStore.deleteItemAsync("tracking-error");
-    await sync(active.user);
+    await recordLocations(active, locations);
   } catch {
     await SecureStore.setItemAsync(
       "tracking-error",
@@ -105,33 +200,26 @@ export async function startTracking(user: string, route: string) {
   await put(
     user,
     "routes",
-    routes.map((r) => (r.id === route ? { ...r, status: "ativa" } : r)),
+    routes.map((r) =>
+      r.id === route
+        ? { ...r, status: "ativa", started_at: result.data.started_at }
+        : r,
+    ),
   );
   await SecureStore.deleteItemAsync("tracking-last-capture");
+  await SecureStore.deleteItemAsync("tracking-last-fix");
   await SecureStore.setItemAsync(
     KEY,
     JSON.stringify({ user, route, startedAt }),
   );
   try {
-    await Location.startLocationUpdatesAsync(TASK, {
-      accuracy: Location.Accuracy.High,
-      timeInterval: 60_000,
-      distanceInterval: 25,
-      deferredUpdatesInterval: 60_000,
-      pausesUpdatesAutomatically: false,
-      foregroundService: {
-        notificationTitle: "FastTrack · rota ativa",
-        notificationBody: "Localização em uso para acompanhar suas entregas.",
-        notificationColor: "#2563eb",
-        killServiceOnDestroy: false,
-      },
-      showsBackgroundLocationIndicator: true,
-    });
+    await Location.startLocationUpdatesAsync(TASK, locationOptions());
     await SecureStore.deleteItemAsync("tracking-error");
   } catch (e) {
     await SecureStore.deleteItemAsync(KEY);
     throw e;
   }
+  void captureTrackingPosition(user).catch(() => {});
 }
 export async function stopTracking() {
   if (await Location.hasStartedLocationUpdatesAsync(TASK))

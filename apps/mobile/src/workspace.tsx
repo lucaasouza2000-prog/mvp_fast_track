@@ -210,7 +210,9 @@ export default function DriverWorkspace(props: Props) {
             <View style={s.health}>
               <Text style={s.healthTitle}>{health}</Text>
               <Text style={s.small}>
-                {pending} registro(s) aguardando confirmação
+                {pending
+                  ? `${pending} registro(s) aguardando confirmação`
+                  : "Sincronizado · atualização automática"}
               </Text>
             </View>
             {error ? <Text style={s.error}>{error}</Text> : null}
@@ -344,7 +346,9 @@ export default function DriverWorkspace(props: Props) {
             <View style={s.health}>
               <Text style={s.healthTitle}>{health}</Text>
               <Text style={s.small}>
-                {pending} registro(s) aguardando confirmação do servidor
+                {pending
+                  ? `${pending} registro(s) aguardando confirmação do servidor`
+                  : "Sincronizado · atualização automática"}
               </Text>
             </View>
             {error ? <Text style={s.error}>{error}</Text> : null}

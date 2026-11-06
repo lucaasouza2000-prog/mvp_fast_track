@@ -44,6 +44,63 @@ export function orderedMapPositions(positions: Position[]): Position[] {
     )
     .sort((a, b) => Date.parse(a.captured_at) - Date.parse(b.captured_at));
 }
+function distanceMeters(a: Coordinate, b: Coordinate): number {
+  const radians = Math.PI / 180;
+  const h =
+    Math.sin(((b[1] - a[1]) * radians) / 2) ** 2 +
+    Math.cos(a[1] * radians) *
+      Math.cos(b[1] * radians) *
+      Math.sin(((b[0] - a[0]) * radians) / 2) ** 2;
+  return 6371000 * 2 * Math.asin(Math.sqrt(Math.min(1, h)));
+}
+/** Display only continuous GPS samples; keep the original captures intact. */
+export function gpsHistorySegments(positions: Position[]): Coordinate[][] {
+  const segments: Coordinate[][] = [];
+  let previous: Position | undefined;
+  let segment: Coordinate[] = [];
+  for (const point of orderedMapPositions(positions)) {
+    if (
+      point.accuracy != null &&
+      (!Number.isFinite(point.accuracy) ||
+        point.accuracy < 0 ||
+        point.accuracy > 100)
+    ) {
+      previous = undefined;
+      segment = [];
+      continue;
+    }
+    const coordinate: Coordinate = [point.longitude, point.latitude];
+    if (previous) {
+      const elapsed =
+        (Date.parse(point.captured_at) - Date.parse(previous.captured_at)) /
+        1000;
+      const distance = distanceMeters(
+        [previous.longitude, previous.latitude],
+        coordinate,
+      );
+      if (elapsed === 0 && distance < 1) continue;
+      // Break across missing captures and implausible jumps, including emulator teleports.
+      const uncertainty = (previous.accuracy ?? 0) + (point.accuracy ?? 0) + 10;
+      if (
+        elapsed <= 0 ||
+        elapsed > 300 ||
+        distance > (160 / 3.6) * elapsed + uncertainty
+      )
+        segment = [];
+    }
+    if (!segment.length) {
+      segment = [coordinate];
+      segments.push(segment);
+    } else {
+      // Small oscillations within GPS precision should not draw a stationary zigzag.
+      const tolerance = Math.max(5, Math.min(25, point.accuracy ?? 5));
+      if (distanceMeters(segment.at(-1)!, coordinate) > tolerance)
+        segment.push(coordinate);
+    }
+    previous = point;
+  }
+  return segments.filter((s) => s.length > 1);
+}
 export interface RoadRoute {
   geometry: { type: "LineString"; coordinates: Coordinate[] };
   distance: number;

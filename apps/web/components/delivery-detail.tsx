@@ -36,6 +36,7 @@ export function DeliveryDetail({
     >([]),
     [now, setNow] = useState(Date.now());
   const [estimate, setEstimate] = useState<ArrivalEstimate | undefined>();
+  const latestCapture = positions.at(-1)?.captured_at;
   useEffect(() => {
     if (demo) {
       setEstimate({ status: "unavailable" });
@@ -71,7 +72,7 @@ export function DeliveryDetail({
       controller.abort();
       clearInterval(timer);
     };
-  }, [route.id, delivery.id, delivery.status, demo]);
+  }, [route.id, delivery.id, delivery.status, latestCapture, demo]);
   useEffect(() => {
     if (demo) {
       setPositions(demo.state.positions[route.id] ?? []);
@@ -130,10 +131,15 @@ export function DeliveryDetail({
         () => void load(),
       )
       .subscribe();
-    const timer = setInterval(() => void load(), 20000);
+    const timer = setInterval(() => void load(), 10000);
+    const reload = () => void load();
+    window.addEventListener("focus", reload);
+    window.addEventListener("online", reload);
     return () => {
       active = false;
       clearInterval(timer);
+      window.removeEventListener("focus", reload);
+      window.removeEventListener("online", reload);
       void db.removeChannel(channel);
     };
   }, [route.id, delivery.id, demo]);

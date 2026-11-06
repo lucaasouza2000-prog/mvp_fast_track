@@ -46,7 +46,7 @@ Copy-Item -Path "$fasttrackSource\packages\core\*" -Destination $fasttrackCore -
 $env:EAS_NO_VCS = "1"
 $env:EAS_PROJECT_ROOT = $fasttrackRoot
 Set-Location -LiteralPath $fasttrackMobile
-Write-Host "Fontes atualizadas. Gerando o APK 0.1.2 (3) no Expo. Mantenha o Pixel 6 aberto."
+Write-Host "Fontes atualizadas. Gerando o APK atualizado no Expo. Mantenha o Pixel 6 aberto."
 Write-Host "Quando perguntar se deseja instalar no emulador, responda Y."
 npx.cmd eas-cli@27.5.0 build --platform android --profile preview
 if ($LASTEXITCODE -ne 0) {

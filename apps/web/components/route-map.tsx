@@ -12,6 +12,7 @@ import type { Position, Route } from "@fasttrack/core";
 import {
   routeCoordinates,
   orderedMapPositions,
+  gpsHistorySegments,
   normalizeRoadRoute,
   type Coordinate,
 } from "../lib/tracking-map";
@@ -199,21 +200,14 @@ export default function RouteMap({
             .addTo(map),
         );
       }
-      const nextHistoryKey = current.positions
-        .map((p) => p.id + ":" + p.longitude + "," + p.latitude)
-        .join(";");
+      const history = gpsHistorySegments(current.positions);
+      const nextHistoryKey = JSON.stringify(history);
       if (nextHistoryKey !== historyKey) {
         historyKey = nextHistoryKey;
-        (map.getSource("history") as maplibregl.GeoJSONSource).setData(
-          current.positions.length > 1
-            ? line(
-                current.positions.map((p): Coordinate => [
-                  p.longitude,
-                  p.latitude,
-                ]),
-              )
-            : empty(),
-        );
+        (map.getSource("history") as maplibregl.GeoJSONSource).setData({
+          type: "FeatureCollection",
+          features: history.map(line),
+        });
       }
       const last = current.positions.at(-1);
       if (last) {
@@ -291,7 +285,12 @@ export default function RouteMap({
         id: "history",
         type: "line",
         source: "history",
-        paint: { "line-color": "#0a9b78", "line-width": 4 },
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": "#0a9b78",
+          "line-width": 3,
+          "line-opacity": 0.8,
+        },
       });
       map.addSource("planned", { type: "geojson", data: empty() });
       map.addLayer({
@@ -360,7 +359,7 @@ export default function RouteMap({
         </span>
         <span>
           <i className="dot green" />{" "}
-          {simulation ? "Posição simulada" : "Motorista · última posição"}
+          {simulation ? "Posição simulada" : "Motorista · histórico GPS"}
         </span>
       </div>
       {error && (

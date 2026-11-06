@@ -3,7 +3,7 @@ export default {
     name: "FAST TRACK",
     slug: "mvpfasttrack",
     owner: "lucas_souza_gm",
-    version: "0.1.2",
+    version: "0.1.3",
     extra: {
       eas: { projectId: "4ef6f5b5-dce9-4a36-8a1a-761f876d8b86" },
     },
@@ -13,7 +13,7 @@ export default {
     newArchEnabled: true,
     android: {
       package: "br.com.fastariam.fasttrack",
-      versionCode: 3,
+      versionCode: 4,
       icon: "./assets/fast-track-logo.png",
       allowBackup: false,
       blockedPermissions: [
