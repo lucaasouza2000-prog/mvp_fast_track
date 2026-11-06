@@ -24,7 +24,9 @@ import {
 import { Scanner } from "../../components/scanner";
 import { useWorkspace } from "../../lib/use-workspace";
 import { supabase } from "../../lib/supabase";
+import { useDemo } from "../../lib/demo";
 export default function Driver() {
+  const demo = useDemo();
   const { profile, routes, loading, error, reload } = useWorkspace("motorista");
   const [selected, setSelected] = useState<string | null>(null),
     [operation, setOperation] = useState<{
@@ -43,7 +45,7 @@ export default function Driver() {
     setBusy(true);
     setFailure("");
     try {
-      if (!navigator.onLine)
+      if (!demo && !navigator.onLine)
         throw new Error(
           "No navegador, esta operação exige internet. Utilize o aplicativo Android para operar offline.",
         );
@@ -52,17 +54,21 @@ export default function Driver() {
         operation.kind,
         code,
       );
-      const { error: e } = await supabase().rpc("record_operation", {
-        p_event: {
-          id: crypto.randomUUID(),
-          route_id: operation.route.id,
-          delivery_id: operation.delivery.id,
-          kind: operation.kind,
-          code: normalized,
-          captured_at: new Date().toISOString(),
-        },
-      });
-      if (e) throw e;
+      const event = {
+        id: crypto.randomUUID(),
+        route_id: operation.route.id,
+        delivery_id: operation.delivery.id,
+        kind: operation.kind,
+        code: normalized,
+        captured_at: new Date().toISOString(),
+      };
+      if (demo) demo.operation(event);
+      else {
+        const { error: e } = await supabase().rpc("record_operation", {
+          p_event: event,
+        });
+        if (e) throw e;
+      }
       setOperation(null);
       setFeedback(
         operation.kind === "check_in"
@@ -211,6 +217,13 @@ export default function Driver() {
           onClose={() => setOperation(null)}
         >
           <form className="admin-form" onSubmit={confirm}>
+            {demo && (
+              <p className="notice">
+                Demonstração: use o código fictício{" "}
+                <strong>{operation.delivery.fiscal_documents[0]?.code}</strong>.
+                Nenhum registro será enviado ao servidor.
+              </p>
+            )}
             {camera && (
               <Scanner
                 onRead={(value) => {

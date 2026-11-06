@@ -11,6 +11,7 @@ import {
 } from "@fasttrack/core";
 import { Modal } from "./ui";
 import { supabase } from "../lib/supabase";
+import { useDemo } from "../lib/demo";
 const Map = dynamic(() => import("./route-map"), {
   ssr: false,
   loading: () => <div className="map-skeleton">Carregando mapa…</div>,
@@ -24,6 +25,7 @@ export function DeliveryDetail({
   delivery: Delivery;
   onClose: () => void;
 }) {
+  const demo = useDemo();
   const [positions, setPositions] = useState<Position[]>([]),
     [error, setError] = useState(""),
     [events, setEvents] = useState<
@@ -31,6 +33,13 @@ export function DeliveryDetail({
     >([]),
     [now, setNow] = useState(Date.now());
   useEffect(() => {
+    if (demo) {
+      setPositions(demo.state.positions[route.id] ?? []);
+      setEvents(demo.state.events.filter((e) => e.delivery_id === delivery.id));
+      setError("");
+      setNow(Date.now());
+      return;
+    }
     let active = true;
     const db = supabase();
     async function load() {
@@ -87,7 +96,7 @@ export function DeliveryDetail({
       clearInterval(timer);
       void db.removeChannel(channel);
     };
-  }, [route.id, delivery.id]);
+  }, [route.id, delivery.id, demo]);
   const last = positions.at(-1),
     fresh = positionFresh(last, now),
     stop = route.stops.find((s) => s.id === delivery.stop_id);
@@ -99,7 +108,7 @@ export function DeliveryDetail({
       wide
     >
       <div className="detail-grid">
-        <Map route={route} positions={positions} />
+        <Map route={route} positions={positions} simulation={!!demo} />
         <aside className="detail-info">
           <span className={`badge ${delivery.status}`}>
             {labels[delivery.status]}
@@ -137,8 +146,12 @@ export function DeliveryDetail({
                 <>
                   {new Date(last.captured_at).toLocaleString("pt-BR")}
                   <small>
-                    {fresh ? "Registro recente" : "Localização desatualizada"} ·
-                    precisão{" "}
+                    {demo
+                      ? "Posição fictícia de demonstração"
+                      : fresh
+                        ? "Registro recente"
+                        : "Localização desatualizada"}{" "}
+                    · precisão{" "}
                     {last.accuracy == null
                       ? "não informada"
                       : `${Math.round(last.accuracy)} m`}
@@ -158,8 +171,9 @@ export function DeliveryDetail({
             </dd>
           </dl>
           <p className="muted">
-            O rastreio mostra posições recebidas, sem garantir acompanhamento
-            contínuo. ETA não calculado.
+            {demo
+              ? "Todas as posições e horários deste exemplo são fictícios. Não há rastreamento real nem ETA."
+              : "O rastreio mostra posições recebidas, sem garantir acompanhamento contínuo. ETA não calculado."}
           </p>
         </aside>
       </div>

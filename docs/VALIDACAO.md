@@ -1,29 +1,28 @@
-# Validação nesta sessão — 5 de novembro de 2026
+# Evidências de validação
 
-## Executado com sucesso
+## Executado localmente
 
-- Instalação limpa com `npm ci` usando o lockfile (antes da inclusão final das fontes Inter; a inclusão atualizou o lockfile via instalação npm).
-- TypeScript de web, aplicativo e regras compartilhadas. Web gera os tipos Next.js antes de verificar.
-- 10 testes Vitest de documentos fiscais, operações e sincronização.
-- 37 verificações PostgreSQL/PGlite com a migration real, RLS, autorização e idempotência.
-- Build de produção Next.js com as versões atualizadas de React e MapLibre.
-- 2 testes Chromium/Playwright no build atualizado, sem backend configurado: estados vazios/configuração, busca, login e layout móvel.
-- Bundle Android Expo SDK 58, com 878 módulos e fontes locais Inter. Não é um APK.
-- Introspecção de configuração nativa: SQLCipher ativado no Gradle, backup Android desativado, permissões GPS/background/foreground service/notificação presentes e permissões de áudio/armazenamento externo bloqueadas.
-- Inicialização com `npm run dev`; `/login`, `/gestao` e `/motorista` responderam HTTP 200 com conteúdo FastTrack.
-- Formatação e verificação de whitespace.
+- Instalação limpa com `npm ci`; os manifests e o lockfile preservam as dependências verificadas. As alterações desta atualização não adicionam dependências.
+- TypeScript de web, aplicativo e regras compartilhadas.
+- **26 testes Vitest**: documentos fiscais, fila, transições do exemplo, diagnóstico sem vazamento de chaves e vinculação administrativa do primeiro gestor. O teste SQL usa PostgreSQL/PGlite com a migration real, verifica repetição sem duplicidade, bloqueio de usuários comuns e proteção de literais e delimitadores SQL.
+- **37 verificações PostgreSQL/PGlite** de migration, RLS, isolamento entre empresas, UUIDs idempotentes, GPS no intervalo ativo e conclusão parcial/total.
+- Build de produção Next.js com configuração pública e também sem credenciais, para validar o primeiro deploy e a apresentação.
+- **7 testes Chromium/Playwright**: interfaces vazias, apresentação, cadastros fictícios, associação de motorista, documento incorreto, check-in/check-out, recarga com preservação local, reinicialização, detalhes com posições simuladas e gerador de SQL. As ações da apresentação foram verificadas sem chamadas ao Supabase ou ao endpoint de cadastro real de motoristas.
+- O check-in/check-out da apresentação foi exercitado com o navegador offline; esse teste valida apenas a simulação local, não a fila SQLCipher do APK.
+- Bundle JavaScript Android Expo SDK 58 com fontes Inter, validado na implementação inicial. Nenhum código nativo do aplicativo foi alterado nesta atualização.
+- Introspecção nativa anterior: SQLCipher ativado, backup Android desativado, permissões GPS/background/foreground service/notificação e bloqueio de permissões de áudio/armazenamento externo.
+- Inicialização local das interfaces e respostas HTTP 200; formatação, whitespace e verificação de ausência de chaves secretas nos arquivos versionados.
 
-## Não executado / dependências externas
+## Ainda não comprovado
 
-- Supabase Auth, REST/PostgREST e Realtime em projeto real: não há credenciais configuradas nesta máquina. O teste PGlite não substitui esses serviços. Migration não aplicada a um projeto hospedado.
-- Cadastro administrativo pelo endpoint Next.js com Auth real, câmeras reais, permissões e operação offline persistida no dispositivo.
-- Compilação nativa EAS/APK, assinatura e instalação em Android.
-- GPS com app aberto, minimizado, tela bloqueada, sem internet, force-stop e restrições de bateria em aparelhos físicos.
-- Deploy Vercel, push para GitHub e publicação do snapshot de ambiente.
+- Supabase Auth, PostgREST, Realtime, aplicação de migrations e login de um gestor no projeto hospedado. Esta máquina permanece sem chave administrativa injetada e sem liberação de rede aplicada para o domínio Supabase; o proxy retornou 403. O diagnóstico `/configuracao` consulta a configuração da própria Vercel, que pode ser diferente.
+- Criação de contas de motoristas pelo endpoint real, leitura de notas pela câmera em aparelhos e testes autenticados de isolamento entre usuários no serviço hospedado.
+- Build nativo EAS/APK, assinatura, instalação e validação física de câmera, SQLite, permissões, GPS com tela bloqueada, perda/retorno de internet, force-stop e bateria.
+- Verificação direta do resultado dos novos deploys Vercel a partir desta máquina: o acesso à Vercel também depende de liberação de rede. O código é enviado ao branch `main`; não confundir push concluído, build local e deploy publicado.
 - iOS.
 
-O roteiro para completar a validação está em `ACEITACAO.md`. Os passos por fase e os limites estão em `ARQUITETURA.md`. Não considerar o sistema homologado para uma operação real antes dessas validações.
+A apresentação em `/demonstracao` usa dados explicitamente fictícios e armazenamento local do navegador. Não constitui homologação operacional. Use `OPERACAO.md`, a página `/configuracao` e o roteiro de `ACEITACAO.md` para concluir os pré-requisitos e os testes reais.
 
-## Configuração reutilizável
+## Ambiente reutilizável
 
-Foram salvos no rascunho do ambiente os campos `install_script` (`npm ci` na raiz) e `start_skill` (inicialização web/mobile, checagens e pré-requisitos). O serviço de configuração confirmou `status: saved` e `requires_publish: true`. Isso persiste as instruções, mas não publica o ambiente nem configura serviços externos. Revise e salve nas configurações do ambiente e depois publique quando desejar disponibilizar o snapshot.
+`install_script` e `start_skill` foram salvos no rascunho do ambiente. A gravação foi confirmada pelo serviço de configuração e exige publicação pelo produto. Isso não configura automaticamente as variáveis da Vercel, não aplica migrations e não fornece credenciais. Nenhuma chave administrativa ou senha foi incorporada ao código.

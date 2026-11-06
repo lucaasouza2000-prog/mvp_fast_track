@@ -6,9 +6,11 @@ import type { Position, Route } from "@fasttrack/core";
 export default function RouteMap({
   route,
   positions,
+  simulation = false,
 }: {
   route: Route;
   positions: Position[];
+  simulation?: boolean;
 }) {
   const container = useRef<HTMLDivElement>(null),
     [error, setError] = useState(""),
@@ -21,24 +23,32 @@ export default function RouteMap({
       [route.origin_lng, route.origin_lat],
       ...stops.map((s) => [s.longitude, s.latitude] as [number, number]),
     ];
-    const map = new maplibregl.Map({
-      container: container.current,
-      style: {
-        version: 8,
-        sources: {
-          osm: {
-            type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-            tileSize: 256,
-            attribution: "© OpenStreetMap contributors",
+    let map: maplibregl.Map;
+    try {
+      map = new maplibregl.Map({
+        container: container.current,
+        style: {
+          version: 8,
+          sources: {
+            osm: {
+              type: "raster",
+              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tileSize: 256,
+              attribution: "© OpenStreetMap contributors",
+            },
           },
+          layers: [{ id: "osm", type: "raster", source: "osm" }],
         },
-        layers: [{ id: "osm", type: "raster", source: "osm" }],
-      },
-      center: points[0],
-      zoom: 10,
-      pitch: 25,
-    });
+        center: points[0],
+        zoom: 10,
+        pitch: 25,
+      });
+    } catch {
+      setError(
+        "O mapa 3D não está disponível neste navegador. Os detalhes da entrega continuam acessíveis.",
+      );
+      return;
+    }
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
     points.forEach((p, i) =>
       new maplibregl.Marker({ color: i === 0 ? "#2563eb" : "#64748b" })
@@ -56,7 +66,7 @@ export default function RouteMap({
         .setLngLat([latest.longitude, latest.latitude])
         .setPopup(
           new maplibregl.Popup().setText(
-            `Última posição: ${new Date(latest.captured_at).toLocaleString("pt-BR")}`,
+            `${simulation ? "Posição simulada" : "Última posição"}: ${new Date(latest.captured_at).toLocaleString("pt-BR")}`,
           ),
         )
         .addTo(map);
@@ -90,6 +100,12 @@ export default function RouteMap({
           source: "history",
           paint: { "line-color": "#0a9b78", "line-width": 4 },
         });
+      }
+      if (simulation) {
+        setRoad(
+          "Pontos e linha ilustrativos. Não representam uma viagem real nem uma rota rodoviária calculada.",
+        );
+        return;
       }
       const base =
         process.env.NEXT_PUBLIC_ROUTING_URL ??
@@ -141,16 +157,18 @@ export default function RouteMap({
       abort.abort();
       map.remove();
     };
-  }, [route, positions]);
+  }, [route, positions, simulation]);
   return (
     <div className="map-wrap">
       <div className="map" ref={container} />
       <div className="map-caption">
         <span>
-          <i className="dot blue" /> Planejado
+          <i className="dot blue" />{" "}
+          {simulation ? "Destinos fictícios" : "Planejado"}
         </span>
         <span>
-          <i className="dot green" /> Histórico GPS
+          <i className="dot green" />{" "}
+          {simulation ? "Posições simuladas" : "Histórico GPS"}
         </span>
       </div>
       <p className="map-note">

@@ -9,6 +9,7 @@ import {
 } from "@fasttrack/core";
 import { supabase } from "../lib/supabase";
 import { Modal } from "./ui";
+import { useDemo } from "../lib/demo";
 type DraftDelivery = {
   client_id: string;
   address: string;
@@ -40,6 +41,7 @@ export function Admin({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const demo = useDemo();
   const [tab, setTab] = useState("rota"),
     [drivers, setDrivers] = useState<Profile[]>([]),
     [vehicles, setVehicles] = useState<Vehicle[]>([]),
@@ -49,6 +51,12 @@ export function Admin({
     [error, setError] = useState(""),
     [message, setMessage] = useState("");
   async function load() {
+    if (demo) {
+      setDrivers(demo.state.drivers);
+      setVehicles(demo.state.vehicles);
+      setClients(demo.state.clients);
+      return;
+    }
     const db = supabase();
     const results = await Promise.all([
       db.from("profiles").select("*").eq("role", "motorista"),
@@ -66,7 +74,7 @@ export function Admin({
   }
   useEffect(() => {
     void load();
-  }, []);
+  }, [demo?.state]);
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -77,31 +85,40 @@ export function Admin({
     const text = (k: string) => String(f.get(k) ?? "");
     try {
       if (tab === "motorista") {
-        const r = await fetch("/api/motoristas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: text("name"),
-            email: text("email"),
-            phone: text("phone"),
-            password: text("password"),
-          }),
-        });
-        const json = await r.json();
-        if (!r.ok) throw new Error(json.error);
+        if (demo) demo.addDriver(text("name"), text("phone"));
+        else {
+          const r = await fetch("/api/motoristas", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: text("name"),
+              email: text("email"),
+              phone: text("phone"),
+              password: text("password"),
+            }),
+          });
+          const json = await r.json();
+          if (!r.ok) throw new Error(json.error);
+        }
       } else if (tab === "veiculo" || tab === "cliente") {
-        const { error: e } = await supabase()
-          .from(tab === "veiculo" ? "vehicles" : "clients")
-          .insert(
-            tab === "veiculo"
-              ? {
-                  tenant_id: profile.tenant_id,
-                  plate: text("plate").toUpperCase(),
-                  description: text("description"),
-                }
-              : { tenant_id: profile.tenant_id, name: text("name") },
-          );
-        if (e) throw e;
+        if (demo) {
+          if (tab === "veiculo")
+            demo.addVehicle(text("plate"), text("description"));
+          else demo.addClient(text("name"));
+        } else {
+          const { error: e } = await supabase()
+            .from(tab === "veiculo" ? "vehicles" : "clients")
+            .insert(
+              tab === "veiculo"
+                ? {
+                    tenant_id: profile.tenant_id,
+                    plate: text("plate").toUpperCase(),
+                    description: text("description"),
+                  }
+                : { tenant_id: profile.tenant_id, name: text("name") },
+            );
+          if (e) throw e;
+        }
       } else {
         const data = newRouteSchema.safeParse({
           code: text("code"),
@@ -131,10 +148,13 @@ export function Admin({
         });
         if (!data.success)
           throw new Error(data.error.issues.map((i) => i.message).join(" "));
-        const { error: e } = await supabase().rpc("create_route", {
-          payload: data.data,
-        });
-        if (e) throw e;
+        if (demo) demo.createRoute(data.data);
+        else {
+          const { error: e } = await supabase().rpc("create_route", {
+            payload: data.data,
+          });
+          if (e) throw e;
+        }
         onSaved();
         onClose();
         return;
@@ -182,6 +202,12 @@ export function Admin({
         ))}
       </div>
       <form key={tab} className="admin-form" onSubmit={save}>
+        {demo && (
+          <p className="notice">
+            Cadastro fictício de apresentação. Não informe senhas ou dados
+            pessoais reais. Nenhuma conta de acesso será criada.
+          </p>
+        )}
         {tab === "motorista" && (
           <>
             <label>
@@ -203,9 +229,10 @@ export function Admin({
               <input
                 name="password"
                 type="password"
+                disabled={!!demo}
                 autoComplete="new-password"
                 minLength={12}
-                required
+                required={!demo}
               />
             </label>
             <p className="muted">
@@ -318,6 +345,7 @@ export function Admin({
                   <label>
                     Cliente
                     <select
+                      aria-label="Cliente"
                       required
                       value={d.client_id}
                       onChange={(e) => patch(i, "client_id", e.target.value)}

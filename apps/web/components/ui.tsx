@@ -11,9 +11,11 @@ import { useEffect, useState } from "react";
 import { supabase, configured } from "../lib/supabase";
 import type { Profile } from "@fasttrack/core";
 import { useInterfacesPreview } from "../lib/interfaces-preview";
+import { useDemo } from "../lib/demo";
 export function Brand() {
+  const demo = useDemo();
   return (
-    <a className="brand" href="/">
+    <a className="brand" href={demo ? "/demonstracao" : "/"}>
       <span className="brand-icon">
         <RouteIcon size={23} />
       </span>
@@ -23,6 +25,7 @@ export function Brand() {
   );
 }
 export function Connection() {
+  const demo = useDemo();
   const preview = useInterfacesPreview();
   const [online, setOnline] = useState(true);
   useEffect(() => {
@@ -38,7 +41,13 @@ export function Connection() {
   return (
     <span className={`connection ${online ? "" : "offline"}`}>
       {online ? <Wifi size={14} /> : <WifiOff size={14} />}{" "}
-      {preview ? "Prévia visual" : online ? "Conectado" : "Sem internet"}
+      {demo
+        ? "Demonstração local"
+        : preview
+          ? "Prévia visual"
+          : online
+            ? "Conectado"
+            : "Sem internet"}
     </span>
   );
 }
@@ -49,6 +58,7 @@ export function Header({
   profile: Profile | null;
   driver?: boolean;
 }) {
+  const demo = useDemo();
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -69,7 +79,7 @@ export function Header({
             <strong>{profile?.name ?? "FastTrack"}</strong>
             <small>{driver ? "Motorista" : "Gestão de operações"}</small>
           </div>
-          {profile && (
+          {profile && !demo && (
             <button
               className="icon-button"
               title="Sair"

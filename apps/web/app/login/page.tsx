@@ -113,9 +113,17 @@ export default function Login() {
             <ShieldCheck size={16} /> Acesso seguro à sua operação
           </small>
           {!preview && (
-            <a className="interfaces-link" href="/interfaces">
-              Visualizar as interfaces
-            </a>
+            <div className="login-links">
+              <a className="interfaces-link" href="/demonstracao">
+                Apresentação com dados fictícios
+              </a>
+              <a className="interfaces-link" href="/configuracao">
+                Verificar configuração da operação
+              </a>
+              <a className="interfaces-link" href="/interfaces">
+                Visualizar as interfaces vazias
+              </a>
+            </div>
           )}
         </form>
       </section>

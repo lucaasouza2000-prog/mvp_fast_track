@@ -10,7 +10,9 @@ import {
 } from "@fasttrack/core";
 import { configured, supabase } from "./supabase";
 import { useInterfacesPreview } from "./interfaces-preview";
+import { useDemo } from "./demo";
 export function useWorkspace(role: Role) {
+  const demo = useDemo();
   const preview = useInterfacesPreview();
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null),
@@ -89,5 +91,19 @@ export function useWorkspace(role: Role) {
       auth.data.subscription.unsubscribe();
     };
   }, [reload, router, preview]);
-  return { profile, routes, loading, error, reload };
+  return {
+    profile: demo
+      ? role === "gestor"
+        ? demo.state.manager
+        : (demo.state.drivers.find((d) => d.id === demo.activeDriverId) ?? null)
+      : profile,
+    routes: demo
+      ? demo.state.routes.filter(
+          (r) => role === "gestor" || r.driver_id === demo.activeDriverId,
+        )
+      : routes,
+    loading: demo ? false : loading,
+    error,
+    reload,
+  };
 }

@@ -40,6 +40,7 @@ export default function Interfaces() {
           ))}
         </nav>
         <a href="/login">Acessar minha conta →</a>
+        <a href="/demonstracao">Apresentação com dados fictícios →</a>
       </header>
       {screen === "gestao" ? (
         <Management />

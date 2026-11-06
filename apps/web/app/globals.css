@@ -1328,3 +1328,204 @@ legend {
     font-size: 10px;
   }
 }
+
+.demo-controls {
+  padding: 20px 36px;
+  background: #eef4ff;
+  border-bottom: 1px solid #dce7fa;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.demo-controls > label {
+  min-width: 240px;
+  max-width: 100%;
+  font-size: 10px;
+}
+.demo-controls > label select {
+  padding: 9px 12px;
+  font-size: 12px;
+}
+.demo-controls > div {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.demo-controls details {
+  width: 100%;
+  font-size: 11px;
+  color: #526c94;
+}
+.demo-controls summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+.demo-controls details p {
+  margin: 10px 0;
+}
+.demo-codes {
+  display: flex;
+  gap: 12px 24px;
+  flex-wrap: wrap;
+  line-height: 1.8;
+}
+.demo-codes code {
+  background: white;
+  border: 1px solid #d9e5fb;
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+.login-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+.setup-header {
+  padding: 24px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: white;
+  border-bottom: 1px solid var(--line);
+}
+.setup-header > a:last-child {
+  font-size: 12px;
+}
+.setup-page {
+  max-width: 1050px;
+  margin: 42px auto;
+  padding: 0 24px;
+}
+.setup-checks,
+.setup-instructions {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-top: 28px;
+  overflow: hidden;
+}
+.setup-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 26px;
+  border-top: 1px solid var(--line);
+}
+.setup-check > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.setup-check > div {
+  flex: 1;
+  min-width: 0;
+}
+.setup-check strong {
+  font-size: 12px;
+}
+.setup-check p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+.setup-footnote {
+  padding: 18px 26px;
+  border-top: 1px solid var(--line);
+}
+.setup-instructions {
+  padding: 28px;
+}
+.setup-instructions h2 {
+  margin: 26px 0 12px;
+}
+.setup-instructions h2:first-child {
+  margin-top: 0;
+}
+.setup-instructions p {
+  font-size: 12px;
+  color: #6e7e95;
+  margin: 10px 0;
+}
+.setup-instructions code {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.setup-bootstrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 0;
+}
+.setup-bootstrap > button {
+  align-self: flex-start;
+}
+.setup-sql textarea {
+  width: 100%;
+  min-height: 260px;
+  resize: vertical;
+  font: 11px/1.7 monospace;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 12px 0;
+}
+.setup-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 25px;
+}
+.setup-actions > a:last-child {
+  font-size: 11px;
+}
+@media (max-width: 700px) {
+  .demo-controls {
+    padding: 18px 20px;
+    gap: 14px;
+  }
+  .demo-controls > label {
+    width: 100%;
+  }
+  .demo-controls > div {
+    gap: 14px;
+  }
+  .demo-controls .text-button {
+    font-size: 10px;
+  }
+  .setup-header {
+    padding: 20px;
+    flex-wrap: wrap;
+  }
+  .setup-page {
+    margin: 30px auto;
+    padding: 0 17px;
+  }
+  .setup-checks .panel-title {
+    gap: 15px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .setup-check {
+    padding: 18px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .setup-check > div {
+    min-width: 180px;
+  }
+  .setup-check > .badge {
+    margin-left: 31px;
+  }
+  .setup-instructions {
+    padding: 21px;
+  }
+}
+
+.table-scroll table {
+  min-width: 760px;
+}

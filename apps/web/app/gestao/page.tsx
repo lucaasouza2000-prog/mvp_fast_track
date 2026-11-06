@@ -17,7 +17,9 @@ import { Header, SetupNotice, Empty } from "../../components/ui";
 import { useWorkspace } from "../../lib/use-workspace";
 import { Admin } from "../../components/admin";
 import { DeliveryDetail } from "../../components/delivery-detail";
+import { useDemo } from "../../lib/demo";
 export default function Management() {
+  const demo = useDemo();
   const { profile, routes, loading, error, reload } = useWorkspace("gestor");
   const [query, setQuery] = useState(""),
     [filter, setFilter] = useState("todas"),
@@ -263,7 +265,10 @@ export default function Management() {
               {query ? " encontradas" : " na visualização"}
             </span>
             <span>
-              <i className="dot green" /> Atualização automática a cada 30 s
+              <i className="dot green" />{" "}
+              {demo
+                ? "Dados fictícios · alterações locais"
+                : "Atualização automática a cada 30 s"}
             </span>
           </footer>
         </section>

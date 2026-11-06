@@ -2,6 +2,10 @@
 
 MVP de rastreamento de entregas da **Fast Ariam Equipamentos + Nostra Via**: gestão web Next.js, aplicativo Android Expo, backend Supabase e regras TypeScript compartilhadas. Interface em português, sem dados fictícios no fluxo normal.
 
+## Apresentação e ativação
+
+Após o deploy, `/demonstracao` oferece dados fictícios e ações interativas para apresentar o produto: seis entregas, cadastros, busca, detalhes, check-in/check-out e posições simuladas. Tudo fica apenas neste navegador; nenhuma conta ou carga é enviada ao Supabase. `/configuracao` verifica a configuração do próprio servidor Vercel e orienta a criação do primeiro gestor pelo painel do Supabase, sem pedir sua senha ao Codex. Veja o [guia para apresentar e operar](docs/OPERACAO.md).
+
 ## Começar
 
 Requisitos: Node.js 22.13+ (24 recomendado), npm e um projeto Supabase. Use o checkout existente; cada tarefa na nuvem já é isolada e não requer Git worktree.
