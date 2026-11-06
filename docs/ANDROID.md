@@ -39,9 +39,11 @@ Baixe o APK do build `preview`, transfira ao aparelho e habilite temporariamente
 
 ## Sessão e emuladores
 
-O APK inicial abriu no BlueStacks P64, mas o usuário recebeu uma falha `ExpoSecureStore` ao descriptografar o contador da sessão. Isso não estabelece que a senha esteja incorreta. P64 identifica uma instância Android 9; para comparar o comportamento, use uma instância Android 11 ou superior ou o emulador oficial do Android Studio. O usuário informou que conseguiu baixar o Android Studio; a instalação e o teste de login nesse emulador ainda estão pendentes.
+O APK inicial abriu no BlueStacks P64, mas o usuário recebeu uma falha `ExpoSecureStore` ao descriptografar o contador da sessão. Isso não estabelece que a senha esteja incorreta. P64 identifica uma instância Android 9. Com o mesmo APK, o usuário confirmou login no emulador oficial Pixel 6/Android 15. A sincronização seguinte mostrou `file is not a database`: a conexão adicional de `withExclusiveTransactionAsync` do Expo SDK 58 não herda `PRAGMA key`.
 
 A versão `0.1.1 (2)` recupera metadados e fragmentos de sessão ilegíveis removendo somente as entradas de autenticação afetadas e solicitando novo login. Nunca limpa as chaves SQLCipher, a fila de entregas ou o estado do GPS. Gravações são relidas antes de confirmar persistência; se o Keystore continua falhando, o login informa indisponibilidade do armazenamento seguro. Não há alternativa em texto aberto nem desativação da criptografia. Os testes dessa recuperação usam um adaptador simulado e o SDK Supabase real, não um Keystore físico.
+
+Essa versão também abre uma conexão isolada para cada transação local, aplica a chave SQLCipher antes de consultar o banco e inicia `BEGIN IMMEDIATE`. Confirma ou reverte a operação e fecha a conexão. A conexão principal também é explicitamente configurada com a chave. O arquivo, as tabelas e a chave existente são preservados. Os testes de integração exercitam o armazenamento real do aplicativo com SQLite, modelando a exigência de chave por conexão; eles reproduziram a falha antes da correção. O binding Android ainda exige confirmação com o APK atualizado.
 
 Essa melhoria exige gerar e instalar um novo APK; o primeiro build `0.1.0 (1)` não recebe alterações de código automaticamente. Instale atualizações com o mesmo pacote e assinatura para conservar dados. Não desinstale nem limpe o armazenamento se houver entregas pendentes de sincronização.
 

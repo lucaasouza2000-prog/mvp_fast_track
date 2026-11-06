@@ -46,6 +46,8 @@ export function mobileErrorMessage(error: unknown) {
     /ExpoSecureStore|SecureStore|keystore/i.test(message)
   )
     return UNAVAILABLE;
+  if (/file is not a database|SQLITE_NOTADB/i.test(message))
+    return "Não foi possível abrir os registros locais. Preserve os dados do aplicativo e informe ao gestor.";
   return message || "Não foi possível concluir a operação.";
 }
 

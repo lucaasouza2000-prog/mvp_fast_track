@@ -11,6 +11,10 @@ import {
   type Position,
 } from "@fasttrack/core";
 import { backend } from "./backend";
+import {
+  initializeEncryptedConnection,
+  withEncryptedTransaction,
+} from "./encrypted-transaction";
 const databases = new Map<string, Promise<SQLite.SQLiteDatabase>>();
 async function db(user: string) {
   if (!/^[0-9a-f-]{36}$/i.test(user)) throw new Error("Usuário inválido.");
@@ -27,16 +31,47 @@ async function db(user: string) {
         await SecureStore.setItemAsync(keyName, key);
       }
       if (!/^[0-9a-f]{64}$/.test(key)) throw new Error("Chave local inválida.");
-      const d = await SQLite.openDatabaseAsync(`${name}.db`);
-      await d.execAsync(
-        `PRAGMA key = "x'${key}'"; PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS queue (seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT UNIQUE NOT NULL,body TEXT NOT NULL);`,
-      );
-      return d;
+      const d = await SQLite.openDatabaseAsync(`${name}.db`, {
+        useNewConnection: true,
+      });
+      try {
+        await initializeEncryptedConnection(d, key);
+        await d.execAsync(
+          "PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS queue (seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT UNIQUE NOT NULL,body TEXT NOT NULL);",
+        );
+        return d;
+      } catch (error) {
+        try {
+          await d.closeAsync();
+        } catch {
+          /* preserve initialization error */
+        }
+        throw error;
+      }
     })();
     databases.set(user, promise);
     promise.catch(() => databases.delete(user));
   }
   return promise;
+}
+async function transaction<T>(
+  user: string,
+  task: (tx: SQLite.SQLiteDatabase) => Promise<T>,
+) {
+  await db(user);
+  const key = await SecureStore.getItemAsync(`db-key-${user}`);
+  if (!key)
+    throw new Error(
+      "Chave local indisponível. Preserve os dados do aplicativo.",
+    );
+  return withEncryptedTransaction(
+    () =>
+      SQLite.openDatabaseAsync(`fasttrack-${user}.db`, {
+        useNewConnection: true,
+      }),
+    key,
+    task,
+  );
 }
 export async function cached<T>(user: string, key: string): Promise<T | null> {
   const row = await (
@@ -63,8 +98,7 @@ export async function queue(user: string): Promise<QueueItem[]> {
   return rows.map((row) => JSON.parse(row.body) as QueueItem);
 }
 export async function saveRemoteRoutes(user: string, routes: Route[]) {
-  const d = await db(user);
-  await d.withExclusiveTransactionAsync(async (tx) => {
+  await transaction(user, async (tx) => {
     const rows = await tx.getAllAsync<{ body: string }>(
       "SELECT body FROM queue ORDER BY seq",
     );
@@ -84,7 +118,6 @@ export async function enqueue(
   kind: QueueItem["kind"],
   payload: Operation | Position,
 ) {
-  const d = await db(user);
   const item: QueueItem = {
     id: payload.id,
     kind,
@@ -92,7 +125,7 @@ export async function enqueue(
     attempts: 0,
     nextAttemptAt: 0,
   };
-  await d.withExclusiveTransactionAsync(async (tx) => {
+  await transaction(user, async (tx) => {
     await tx.runAsync(
       "INSERT INTO queue(id,body) VALUES(?,?)",
       item.id,

@@ -213,6 +213,11 @@ describe("sessão móvel em armazenamento seguro", () => {
     expect(
       mobileErrorMessage({ message: "Documento não corresponde à carga." }),
     ).toBe("Documento não corresponde à carga.");
+    expect(
+      mobileErrorMessage(new Error("Error code 26: file is not a database")),
+    ).toBe(
+      "Não foi possível abrir os registros locais. Preserve os dados do aplicativo e informe ao gestor.",
+    );
   });
 
   it("persiste e reabre a sessão com o SDK Supabase real após recuperar registros inválidos", async () => {
