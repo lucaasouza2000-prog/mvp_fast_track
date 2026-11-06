@@ -2,16 +2,25 @@
 
 ## Gerar o aplicativo
 
-Instale dependências na raiz (`npm ci`). Copie `apps/mobile/.env.example` para `apps/mobile/.env` e use o mesmo Supabase da web. Para EAS, configure as variáveis públicas no ambiente EAS usado pelo perfil `preview`; o build remoto precisa recebê-las. Elas são públicas e ficam embutidas no APK. Nunca configure `service_role` no Expo.
+O aplicativo está vinculado ao projeto Expo `lucas_souza_gm/mvpfasttrack`, ID `4ef6f5b5-dce9-4a36-8a1a-761f876d8b86`. O nome de exibição do aplicativo instalado continua sendo FastTrack.
+
+Instale dependências na raiz (`npm ci`). O perfil `preview` de `apps/mobile/eas.json` já inclui a URL e a chave **publicável** do mesmo Supabase usado pelo site. Esses valores são públicos e ficam embutidos no APK; nenhuma chave administrativa faz parte dessa configuração. O ambiente EAS selecionado para esse perfil é `preview`. O perfil `production` usa o ambiente `production` e exige as duas variáveis `EXPO_PUBLIC_SUPABASE_*` configuradas nesse ambiente antes de gerar um AAB. Nunca configure `service_role` no Expo.
+
+Para desenvolvimento local, copie `apps/mobile/.env.example` para `apps/mobile/.env` e preencha a URL e a chave pública. As variáveis da Vercel não são transferidas para Expo automaticamente.
+
+O primeiro APK é iniciado pela CLI com a conta Expo que tem acesso ao projeto:
 
 ```bash
 cd apps/mobile
-npx eas-cli login
-npx eas-cli build:configure
-npx eas-cli build --platform android --profile preview
+npx eas-cli@latest login
+npx eas-cli@latest build --platform android --profile preview
 ```
 
-O primeiro uso do EAS pode precisar associar o projeto à sua conta/organização e adicionar o `projectId` gerado à configuração Expo. Credenciais de assinatura são gerenciadas pela conta EAS. EAS Build não foi executado neste ambiente: não há conta configurada nem APK gerado. Para uso local com Android Studio/SDK/JDK compatíveis, `npm run android` cria um development build. `npm run start` inicia o Metro para esse cliente.
+O `projectId` e o proprietário já estão definidos na configuração. No primeiro build Android, aceite gerar uma nova chave de assinatura quando a CLI perguntar, caso o projeto ainda não tenha uma. As credenciais de assinatura ficam gerenciadas pela conta EAS. EAS Build não foi executado neste ambiente: não há sessão Expo configurada nem APK gerado. Para uso local com Android Studio/SDK/JDK compatíveis, `npm run android` cria um development build. `npm run start` inicia o Metro para esse cliente.
+
+No Windows, use PowerShell e Node.js LTS compatível com `engines.node` do projeto. Depois de obter o repositório, entre na pasta raiz, execute `npm ci` e siga os comandos acima. O login solicita a senha dentro do terminal; não é necessário enviá-la no chat.
+
+Após o primeiro build Android bem-sucedido pela CLI, pode-se conectar o repositório `lucaasouza2000-prog/mvp_fast_track` em **Project settings → GitHub** do Expo. Defina **Base directory** como `apps/mobile`. No painel de builds, use branch `main`, plataforma **Android** e perfil **preview** para gerar APKs. A documentação do Expo exige um primeiro build bem-sucedido por CLI antes de iniciar builds pela integração GitHub. Os perfis já definem `image: latest`, exigido por essa integração.
 
 O plugin `expo-sqlite` usa `useSQLCipher:true`; por isso é obrigatório compilar um aplicativo nativo próprio. Expo Go não inclui esse banco criptografado nem fornece validação do serviço de localização exigido. A configuração de câmera remove gravação de áudio.
 
