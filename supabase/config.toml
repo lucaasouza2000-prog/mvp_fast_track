@@ -1,0 +1,16 @@
+project_id = "fasttrack"
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+[db]
+port = 54322
+major_version = 17
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+enable_signup = false
+[auth.email]
+enable_signup = false
+[realtime]
+enabled = true

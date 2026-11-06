@@ -1,0 +1,32 @@
+{
+  "name": "fasttrack",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "npm run dev -w @fasttrack/web",
+    "build": "npm run build -w @fasttrack/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "mobile": "npm run start -w @fasttrack/mobile",
+    "test:db": "node scripts/test-db.mjs",
+    "test:web": "playwright test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.15",
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^24.0.0",
+    "prettier": "^3.9.10",
+    "typescript": "~5.9.3",
+    "vitest": "5.1.0"
+  },
+  "type": "module"
+}
