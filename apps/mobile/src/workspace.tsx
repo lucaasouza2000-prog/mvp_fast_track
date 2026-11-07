@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Pressable,
+  BackHandler,
   ScrollView,
   StyleSheet,
   Text as NativeText,
@@ -206,6 +207,21 @@ export default function DriverWorkspace(p: Props) {
   const [tab, setTab] = useState("rotas"),
     [selected, setSelected] = useState<string | null>(null);
   const route = p.routes.find((r) => r.id === selected);
+  const returnToRoutes = () => {
+    setSelected(null);
+    setTab("rotas");
+  };
+  useEffect(() => {
+    const listener = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (selected !== null || tab !== "rotas") {
+        setSelected(null);
+        setTab("rotas");
+        return true;
+      }
+      return false;
+    });
+    return () => listener.remove();
+  }, [selected, tab]);
   const ordered = (r: Route) =>
     [...r.deliveries].sort(
       (a, b) =>
@@ -220,7 +236,9 @@ export default function DriverWorkspace(p: Props) {
           <>
             <Pressable
               accessibilityRole="button"
-              onPress={() => setSelected(null)}
+              accessibilityLabel="Voltar para suas rotas"
+              hitSlop={10}
+              onPress={returnToRoutes}
               style={s.back}
             >
               <Text style={s.backText}>‹ Suas rotas</Text>
@@ -247,7 +265,10 @@ export default function DriverWorkspace(p: Props) {
           </>
         )}
       </View>
-      <ScrollView contentContainerStyle={s.content}>
+      <ScrollView
+        key={`${tab}:${route?.id ?? "list"}`}
+        contentContainerStyle={s.content}
+      >
         {tab === "rotas" && route ? (
           ordered(route).map((d, i) => (
             <View
@@ -460,8 +481,12 @@ export default function DriverWorkspace(p: Props) {
           <Pressable
             key={id}
             accessibilityRole="tab"
+            accessibilityLabel={label}
             accessibilityState={{ selected: tab === id }}
-            onPress={() => setTab(id)}
+            onPress={() => {
+              setSelected(null);
+              setTab(id);
+            }}
             style={s.navItem}
           >
             <NavIcon name={id} color={tab === id ? "#108238" : "#4b607b"} />
@@ -498,6 +523,8 @@ const s = StyleSheet.create({
     lineHeight: 35,
   },
   back: {
+    minHeight: 48,
+    justifyContent: "center",
     alignSelf: "flex-start",
     borderRadius: 24,
     paddingHorizontal: 15,
@@ -609,7 +636,13 @@ const s = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#d8e0eb",
   },
-  navItem: { flex: 1, alignItems: "center", gap: 3 },
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 48,
+    gap: 3,
+  },
   navIcon: { fontSize: 26, color: "#4b607b" },
   navLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#4b607b" },
   navActive: { color: "#108238" },

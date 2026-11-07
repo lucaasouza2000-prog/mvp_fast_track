@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 $fasttrackRoot = (Resolve-Path -LiteralPath $ProjectRoot).Path
 $fasttrackMobile = Join-Path $fasttrackRoot "apps\mobile"
 $fasttrackCore = Join-Path $fasttrackRoot "packages\core"
-foreach ($fasttrackFile in @("package.json", "apps\mobile\App.tsx", "packages\core\package.json")) {
+foreach ($fasttrackFile in @("package.json", "package-lock.json", "apps\mobile\App.tsx", "packages\core\package.json")) {
     if (-not (Test-Path -LiteralPath (Join-Path $fasttrackRoot $fasttrackFile))) {
         throw "Pasta do projeto incorreta: $fasttrackRoot"
     }
@@ -23,7 +23,7 @@ Write-Host "Baixando a atualizacao FAST TRACK..."
 Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/lucaasouza2000-prog/mvp_fast_track/archive/$Revision.zip" -OutFile "$fasttrackTemp\codigo.zip"
 Expand-Archive -LiteralPath "$fasttrackTemp\codigo.zip" -DestinationPath "$fasttrackTemp\codigo"
 $fasttrackSource = Join-Path "$fasttrackTemp\codigo" "mvp_fast_track-$Revision"
-foreach ($fasttrackFile in @("apps\mobile\app.config.ts", "apps\mobile\assets\fast-track-logo.png", "packages\core\src\index.ts")) {
+foreach ($fasttrackFile in @("package.json", "package-lock.json", "apps\mobile\app.config.ts", "apps\mobile\assets\fast-track-logo.png", "packages\core\src\index.ts")) {
     if (-not (Test-Path -LiteralPath (Join-Path $fasttrackSource $fasttrackFile))) {
         throw "A atualizacao baixada esta incompleta. Nenhum arquivo local foi substituido."
     }
@@ -38,10 +38,20 @@ foreach ($fasttrackPart in @("mobile", "core")) {
         Where-Object { $_.Name -notin @("node_modules", ".expo", "dist") -and $_.Name -notlike ".env*" } |
         Copy-Item -Destination $fasttrackBackup -Recurse -Force
 }
+New-Item -ItemType Directory -Path "$fasttrackTemp\backup\root" -Force | Out-Null
+Copy-Item -LiteralPath "$fasttrackRoot\package.json", "$fasttrackRoot\package-lock.json" -Destination "$fasttrackTemp\backup\root"
 Compress-Archive -Path "$fasttrackTemp\backup\*" -DestinationPath "$fasttrackTemp\backup.zip"
 Write-Host "Copia salva em $fasttrackTemp\backup.zip"
 Copy-Item -Path "$fasttrackSource\apps\mobile\*" -Destination $fasttrackMobile -Recurse -Force
 Copy-Item -Path "$fasttrackSource\packages\core\*" -Destination $fasttrackCore -Recurse -Force
+Copy-Item -LiteralPath "$fasttrackSource\package.json", "$fasttrackSource\package-lock.json" -Destination $fasttrackRoot -Force
+
+Set-Location -LiteralPath $fasttrackRoot
+Write-Host "Instalando as dependencias atualizadas do aplicativo..."
+npm.cmd ci
+if ($LASTEXITCODE -ne 0) {
+    throw "A instalacao das dependencias falhou. A compilacao nao foi iniciada. Backup em $fasttrackTemp\backup.zip."
+}
 
 $env:EAS_NO_VCS = "1"
 $env:EAS_PROJECT_ROOT = $fasttrackRoot

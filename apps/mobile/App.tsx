@@ -7,7 +7,6 @@ import {
   AppState,
   Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text as NativeText,
@@ -15,6 +14,11 @@ import {
   TextInput,
   View,
 } from "react-native";
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  initialWindowMetrics,
+} from "react-native-safe-area-context";
 import {
   useFonts,
   Inter_400Regular,
@@ -102,6 +106,13 @@ function Button({
   );
 }
 export default function App() {
+  return (
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+function AppContent() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
@@ -522,7 +533,10 @@ export default function App() {
         }}
         onDirections={(route, delivery) => void openDirections(route, delivery)}
         onTrack={track}
-        onSync={() => void refresh(user, online)}
+        onSync={() => {
+          void NetInfo.refresh().catch(() => {});
+          void refresh(user, true);
+        }}
         onPause={() =>
           void stopTracking()
             .then(async () => setHealth(await trackingHealth()))
@@ -545,74 +559,78 @@ export default function App() {
         animationType="slide"
         onRequestClose={() => setOperation(null)}
       >
-        <SafeAreaView style={s.screen}>
-          <ScrollView contentContainerStyle={s.content}>
-            <Text style={s.title}>
-              {operation?.kind === "check_in"
-                ? "Confirmar carga"
-                : "Concluir entrega"}
-            </Text>
-            <Text style={s.subtitle}>{operation?.delivery.clients.name}</Text>
-            {camera && permission?.granted && (
-              <CameraView
-                style={{ height: 280, borderRadius: 12 }}
-                facing="back"
-                barcodeScannerSettings={{
-                  barcodeTypes: ["qr", "code128", "ean13", "ean8", "pdf417"],
-                }}
-                onBarcodeScanned={({ data }) => {
-                  setCode(data);
-                  setCamera(false);
+        <SafeAreaProvider>
+          <SafeAreaView style={s.screen}>
+            <ScrollView contentContainerStyle={s.content}>
+              <Text style={s.title}>
+                {operation?.kind === "check_in"
+                  ? "Confirmar carga"
+                  : "Concluir entrega"}
+              </Text>
+              <Text style={s.subtitle}>{operation?.delivery.clients.name}</Text>
+              {camera && permission?.granted && (
+                <CameraView
+                  style={{ height: 280, borderRadius: 12 }}
+                  facing="back"
+                  barcodeScannerSettings={{
+                    barcodeTypes: ["qr", "code128", "ean13", "ean8", "pdf417"],
+                  }}
+                  onBarcodeScanned={({ data }) => {
+                    setCode(data);
+                    setCamera(false);
+                  }}
+                />
+              )}
+              <Button
+                secondary
+                title={
+                  camera ? "Fechar câmera" : "Ler nota fiscal com a câmera"
+                }
+                onPress={() => {
+                  void (async () => {
+                    if (camera) {
+                      setCamera(false);
+                      return;
+                    }
+                    const p = permission?.granted
+                      ? permission
+                      : await requestPermission();
+                    if (p.granted) setCamera(true);
+                    else
+                      setError(
+                        "Sem permissão de câmera. Digite o código manualmente.",
+                      );
+                  })();
                 }}
               />
-            )}
-            <Button
-              secondary
-              title={camera ? "Fechar câmera" : "Ler nota fiscal com a câmera"}
-              onPress={() => {
-                void (async () => {
-                  if (camera) {
-                    setCamera(false);
-                    return;
-                  }
-                  const p = permission?.granted
-                    ? permission
-                    : await requestPermission();
-                  if (p.granted) setCamera(true);
-                  else
-                    setError(
-                      "Sem permissão de câmera. Digite o código manualmente.",
-                    );
-                })();
-              }}
-            />
-            <TextInput
-              style={s.input}
-              accessibilityLabel="Código fiscal"
-              placeholder="Chave NF-e ou código cadastrado"
-              value={code}
-              onChangeText={setCode}
-              multiline
-              autoCapitalize="characters"
-            />
-            <Text style={s.small}>
-              Confere o documento cadastrado nesta entrega. Não consulta a
-              situação fiscal na SEFAZ.
-            </Text>
-            {!!error && <Text style={s.error}>{error}</Text>}
-            <Button
-              title={busy ? "Salvando…" : "Confirmar registro"}
-              disabled={busy || !code}
-              onPress={() => void confirm()}
-            />
-            <Button
-              secondary
-              title="Cancelar"
-              onPress={() => setOperation(null)}
-            />
-            {busy && <ActivityIndicator color="#2563eb" />}
-          </ScrollView>
-        </SafeAreaView>
+              <TextInput
+                style={s.input}
+                accessibilityLabel="Código fiscal"
+                placeholder="Chave NF-e ou código cadastrado"
+                value={code}
+                onChangeText={setCode}
+                multiline
+                autoCapitalize="characters"
+              />
+              <Text style={s.small}>
+                Confere o documento cadastrado nesta entrega. Não consulta a
+                situação fiscal na SEFAZ.
+              </Text>
+              {!!error && <Text style={s.error}>{error}</Text>}
+              <Button
+                title={busy ? "Salvando…" : "Confirmar registro"}
+                disabled={busy || !code}
+                onPress={() => void confirm()}
+              />
+              <Button
+                secondary
+                title="Cancelar"
+                onPress={() => setOperation(null)}
+              />
+              {busy && <ActivityIndicator color="#2563eb" />}
+            </ScrollView>
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     </SafeAreaView>
   );

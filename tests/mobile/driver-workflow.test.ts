@@ -2,13 +2,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
 import { createDemoState } from "@fasttrack/core/demo";
 import type { Route } from "@fasttrack/core";
-const hooks = vi.hoisted(() => ({ cursor: 0, state: [] as any[] }));
+const hooks = vi.hoisted(() => ({
+  cursor: 0,
+  effectCursor: 0,
+  state: [] as any[],
+  effects: [] as { deps: unknown[]; cleanup?: () => void }[],
+  back: null as null | (() => boolean),
+}));
 // Keep real React elements and exercise the actual component callbacks/state.
 // Native rendering is replaced with host elements; no device or permissions are simulated here.
 vi.mock("react", async (original) => {
   const actual = await original<typeof import("react")>();
   return {
     ...actual,
+    useEffect: (effect: () => void | (() => void), deps: unknown[]) => {
+      const n = hooks.effectCursor++;
+      const previous = hooks.effects[n];
+      if (!previous || deps.some((d, i) => !Object.is(d, previous.deps[i]))) {
+        previous?.cleanup?.();
+        hooks.effects[n] = { deps, cleanup: effect() || undefined };
+      }
+    },
     useState: (initial: unknown) => {
       const n = hooks.cursor++;
       if (!(n in hooks.state)) hooks.state[n] = initial;
@@ -24,6 +38,16 @@ vi.mock("react", async (original) => {
 });
 vi.mock("react-native", () => ({
   Pressable: "pressable",
+  BackHandler: {
+    addEventListener: (_event: string, listener: () => boolean) => {
+      hooks.back = listener;
+      return {
+        remove: () => {
+          if (hooks.back === listener) hooks.back = null;
+        },
+      };
+    },
+  },
   ScrollView: "scroll",
   Text: "text",
   View: "view",
@@ -47,6 +71,7 @@ let route: Route;
 let props: Parameters<typeof Workspace>[0];
 function render() {
   hooks.cursor = 0;
+  hooks.effectCursor = 0;
   return elements(Workspace(props));
 }
 function button(label: string) {
@@ -60,6 +85,10 @@ function press(label: string) {
   if (!b!.props.disabled) b!.props.onPress();
 }
 beforeEach(() => {
+  hooks.effects.forEach((e) => e.cleanup?.());
+  hooks.effects = [];
+  hooks.effectCursor = 0;
+  hooks.back = null;
   hooks.cursor = 0;
   hooks.state = [];
   route = structuredClone(createDemoState().routes[0]);
@@ -134,3 +163,87 @@ describe("fluxo do motorista com o design simplificado", () => {
     expect(button("Check-out")).toBeUndefined();
   });
 });
+
+function selectTab(name: string) {
+  const target = render().find(
+    (e) =>
+      e.props.accessibilityRole === "tab" &&
+      e.props.accessibilityLabel === name,
+  );
+  expect(target).toBeDefined();
+  target!.props.onPress();
+}
+function openActiveRoute() {
+  route.deliveries.forEach((d) => {
+    d.status = "em_transporte";
+  });
+  press("Ver rota  →");
+  render();
+}
+describe("voltar e comandos de navegação do motorista", () => {
+  it("Suas rotas retorna à lista sem repetir check-in nem alterar a entrega", () => {
+    openActiveRoute();
+    press("‹ Suas rotas");
+    expect(button("Ver rota  →")).toBeDefined();
+    expect(button("Check-out")).toBeUndefined();
+    expect(props.onOperation).not.toHaveBeenCalled();
+    expect(route.deliveries[0].status).toBe("em_transporte");
+    props.routes = [{ ...route }];
+    expect(button("Ver rota  →")).toBeDefined();
+  });
+  it("a aba Rotas volta à lista mesmo quando a rota já está aberta", () => {
+    openActiveRoute();
+    selectTab("Rotas");
+    expect(button("Ver rota  →")).toBeDefined();
+    expect(button("Check-out")).toBeUndefined();
+  });
+  it("o voltar do Android fecha o detalhe antes de permitir sair na lista", () => {
+    openActiveRoute();
+    expect(hooks.back!()).toBe(true);
+    render();
+    expect(button("Ver rota  →")).toBeDefined();
+    expect(hooks.back!()).toBe(false);
+  });
+  it("o voltar do Android retorna de outras abas e remove o listener ao desmontar", () => {
+    selectTab("Conta");
+    render();
+    expect(hooks.back!()).toBe(true);
+    render();
+    expect(button("Confirmar  →")).toBeDefined();
+    hooks.effects.forEach((e) => e.cleanup?.());
+    expect(hooks.back).toBeNull();
+  });
+  it("as abas Resumo, Alertas e Conta respondem, e Rotas não reabre o detalhe antigo", () => {
+    openActiveRoute();
+    selectTab("Resumo");
+    expect(text(WorkspaceRender())).toContain("Sua operação");
+    selectTab("Alertas");
+    expect(button("Tentar sincronizar")).toBeDefined();
+    selectTab("Conta");
+    expect(button("Sair")).toBeDefined();
+    selectTab("Rotas");
+    expect(button("Ver rota  →")).toBeDefined();
+    expect(button("Check-out")).toBeUndefined();
+  });
+  it("os comandos de sincronizar, GPS, navegar, pausar e sair chamam as ações correspondentes", () => {
+    openActiveRoute();
+    selectTab("Alertas");
+    press("Tentar sincronizar");
+    expect(props.onSync).toHaveBeenCalledOnce();
+    selectTab("Conta");
+    press("Iniciar / retomar GPS");
+    expect(props.onTrack).toHaveBeenCalledWith(route);
+    const d = route.deliveries[0];
+    press("Navegar · " + d.clients.name);
+    expect(props.onDirections).toHaveBeenCalledWith(route, d);
+    press("Pausar GPS");
+    expect(props.onPause).toHaveBeenCalledOnce();
+    press("Sair");
+    expect(props.onLogout).toHaveBeenCalledOnce();
+  });
+});
+function WorkspaceRender() {
+  hooks.cursor = 0;
+  hooks.effectCursor = 0;
+  return Workspace(props);
+}
