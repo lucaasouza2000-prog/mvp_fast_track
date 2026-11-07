@@ -365,3 +365,28 @@ test("a configuração mostra pendências e gera SQL sem solicitar senha", async
   ).toHaveValue(/Gestor D''Ávila/);
   await expect(page.locator("input[type=password]")).toHaveCount(0);
 });
+
+test("a ativação oferece o SQL sem executar limpeza automaticamente", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/atualizacao-rotas");
+  await expect(
+    page.getByRole("heading", { name: "Ativar gestão de rotas" }),
+  ).toBeVisible();
+  const sql = page.getByLabel("SQL de atualização", { exact: true });
+  await expect(sql).toHaveValue(
+    /create or replace function public.archive_routes/,
+  );
+  await expect(
+    page.getByText("Executar este SQL não exclui nenhuma rota.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Copiar SQL", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("SQL copiado");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    await sql.inputValue(),
+  );
+});

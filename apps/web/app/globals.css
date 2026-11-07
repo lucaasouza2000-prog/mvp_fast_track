@@ -2313,3 +2313,53 @@ input::placeholder {
 .detail-field .arrival-estimate strong {
   color: #124277;
 }
+.management-actions,
+.route-manager-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.route-manager {
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.route-manager td input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  accent-color: #108238;
+}
+.route-delete-confirm {
+  border: 1px solid #e1b1b5;
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.route-delete-confirm ul {
+  max-height: 200px;
+  overflow: auto;
+}
+@media (max-width: 760px) {
+  .management-actions {
+    justify-content: flex-start;
+  }
+  .route-manager {
+    padding: 20px 16px;
+  }
+  .page-intro {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+}
+.route-manager-tools .danger {
+  color: #b22d35;
+  border-color: #e1b1b5;
+}
+.route-delete-confirm .primary {
+  background: #b22d35;
+}

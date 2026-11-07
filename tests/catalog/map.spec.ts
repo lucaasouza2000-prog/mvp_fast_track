@@ -148,6 +148,12 @@ async function setup(page: Page, context: BrowserContext, failTiles = false) {
       return request.fulfill({ json: manager });
     if (url.pathname === "/rest/v1/routes")
       return request.fulfill({ json: [state.route] });
+    if (url.pathname === "/rest/v1/vehicles")
+      return request.fulfill({ json: [state.route.vehicles] });
+    if (url.pathname === "/rest/v1/clients")
+      return request.fulfill({
+        json: state.route.deliveries.map((d) => d.clients),
+      });
     if (url.pathname === "/rest/v1/positions") {
       state.positionReads++;
       return request.fulfill({
@@ -278,4 +284,75 @@ test("oferece recuperação quando os blocos do mapa falham", async ({
       { exact: true },
     ),
   ).toHaveCount(0);
+});
+
+test("gestor edita uma rota ativa e exclui testes apenas após confirmação", async ({
+  page,
+  context,
+}) => {
+  const { state } = await setup(page, context);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Fechar", exact: true })
+    .click();
+  await page.route("**/api/motoristas", (r) =>
+    r.fulfill({ json: { drivers: [state.route.profiles] } }),
+  );
+  const updates: any[] = [];
+  const removals: any[] = [];
+  await page.route("**/api/rotas", async (r) => {
+    const payload = r.request().postDataJSON();
+    if (r.request().method() === "PATCH") {
+      updates.push(payload);
+      state.route.code = payload.data.code;
+      return r.fulfill({ json: { ok: true, count: 1 } });
+    }
+    removals.push(payload);
+    return r.fulfill({ json: { ok: true, count: payload.routes.length } });
+  });
+  await page
+    .getByRole("button", { name: "Gerenciar rotas", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Editar rota MAPA-TESTE", exact: true })
+    .click();
+  let dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("Motorista", { exact: true })).toBeDisabled();
+  await expect(
+    dialog.getByLabel("Chave NF-e ou código fiscal", { exact: true }),
+  ).toHaveAttribute("readonly", "");
+  await dialog
+    .getByLabel("Identificação da rota", { exact: true })
+    .fill("ROTA-CORRIGIDA");
+  await dialog
+    .getByRole("button", { name: "Salvar alterações", exact: true })
+    .click();
+  await expect.poll(() => updates.length).toBe(1);
+  expect(updates[0].data.deliveries[0].id).toBe(state.route.deliveries[0].id);
+  expect(updates[0].data.driver_id).toBe(state.route.driver_id);
+  await page
+    .getByLabel("Selecionar rota ROTA-CORRIGIDA", { exact: true })
+    .check();
+  await page
+    .getByRole("button", { name: "Excluir selecionadas (1)", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Confirmar exclusão", exact: true }),
+  ).toBeDisabled();
+  expect(removals).toHaveLength(0);
+  await page
+    .getByRole("button", { name: "Cancelar exclusão", exact: true })
+    .click();
+  expect(removals).toHaveLength(0);
+  await page
+    .getByRole("button", { name: "Excluir selecionadas (1)", exact: true })
+    .click();
+  await page
+    .getByLabel("Digite EXCLUIR para confirmar", { exact: true })
+    .fill("EXCLUIR");
+  await page
+    .getByRole("button", { name: "Confirmar exclusão", exact: true })
+    .click();
+  await expect.poll(() => removals.length).toBe(1);
+  expect(removals[0].routes).toEqual([{ id: state.route.id, version: 0 }]);
 });

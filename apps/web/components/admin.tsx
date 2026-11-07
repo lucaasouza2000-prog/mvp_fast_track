@@ -11,6 +11,7 @@ import { supabase } from "../lib/supabase";
 import { Modal } from "./ui";
 import { useDemo } from "../lib/demo";
 import { AddressPicker } from "./address-picker";
+import { routeEditSchema, type ManagedRoute } from "../lib/route-management";
 import type { AddressPoint } from "../lib/postal-address";
 type DraftDelivery = {
   id: string;
@@ -36,19 +37,68 @@ export function Admin({
   profile,
   onClose,
   onSaved,
+  editingRoute,
 }: {
   profile: Profile;
   onClose: () => void;
   onSaved: () => void;
+  editingRoute?: ManagedRoute;
 }) {
   const demo = useDemo();
   const loadVersion = useRef(0);
+  const [setupError, setSetupError] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState(
+    editingRoute?.driver_id ?? "",
+  );
+  const [selectedVehicle, setSelectedVehicle] = useState(
+    editingRoute?.vehicle_id ?? "",
+  );
+  const driverLocked =
+    !!editingRoute &&
+    (editingRoute.status === "ativa" ||
+      editingRoute.deliveries.some((d) => d.status !== "pendente"));
   const [tab, setTab] = useState("rota"),
     [drivers, setDrivers] = useState<Profile[]>([]),
     [vehicles, setVehicles] = useState<Vehicle[]>([]),
     [clients, setClients] = useState<Client[]>([]),
-    [origin, setOrigin] = useState<AddressPoint | null>(null),
-    [deliveries, setDeliveries] = useState<DraftDelivery[]>([blank()]),
+    [origin, setOrigin] = useState<AddressPoint | null>(
+      editingRoute
+        ? {
+            address: editingRoute.origin,
+            latitude: editingRoute.origin_lat,
+            longitude: editingRoute.origin_lng,
+          }
+        : null,
+    ),
+    [deliveries, setDeliveries] = useState<DraftDelivery[]>(
+      editingRoute
+        ? [...editingRoute.deliveries]
+            .sort(
+              (a, b) =>
+                (editingRoute.stops.find((s) => s.id === a.stop_id)?.sequence ??
+                  0) -
+                (editingRoute.stops.find((s) => s.id === b.stop_id)?.sequence ??
+                  0),
+            )
+            .map((d) => {
+              const stop = editingRoute.stops.find((s) => s.id === d.stop_id)!;
+              return {
+                id: d.id,
+                client_id: d.client_id,
+                point: {
+                  address: stop.address,
+                  latitude: stop.latitude,
+                  longitude: stop.longitude,
+                },
+                cargo_code: d.cargo_code,
+                description: d.description,
+                weight: String(d.weight_kg),
+                volume: d.volume_m3 == null ? "" : String(d.volume_m3),
+                fiscal_code: d.fiscal_documents[0]?.code ?? "",
+              };
+            })
+        : [blank()],
+    ),
     [busy, setBusy] = useState(false),
     [driversBusy, setDriversBusy] = useState(false),
     [syncingDrivers, setSyncingDrivers] = useState(false),
@@ -164,6 +214,7 @@ export function Admin({
     e.preventDefault();
     setBusy(true);
     setError("");
+    setSetupError(false);
     setMessage("");
     const form = e.currentTarget;
     const f = new FormData(form);
@@ -222,15 +273,18 @@ export function Admin({
           throw new Error(
             "Busque o CEP e confirme o endereço da origem e de todas as entregas antes de criar a rota.",
           );
-        const data = newRouteSchema.safeParse({
+        const data = (
+          editingRoute ? routeEditSchema : newRouteSchema
+        ).safeParse({
           code: text("code"),
-          driver_id: text("driver"),
-          vehicle_id: text("vehicle"),
+          driver_id: selectedDriver,
+          vehicle_id: selectedVehicle,
           origin,
           scheduled_at: text("scheduled")
             ? new Date(text("scheduled")).toISOString()
             : null,
           deliveries: deliveries.map((d) => ({
+            id: d.id,
             client_id: d.client_id,
             destination: d.point,
             cargo_code: d.cargo_code,
@@ -242,7 +296,22 @@ export function Admin({
         });
         if (!data.success)
           throw new Error(data.error.issues.map((i) => i.message).join(" "));
-        if (demo) demo.createRoute(data.data);
+        if (editingRoute) {
+          const response = await fetch("/api/rotas", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: editingRoute.id,
+              version: editingRoute.management_version ?? 0,
+              data: data.data,
+            }),
+          });
+          const result = await response.json();
+          if (!response.ok) {
+            setSetupError(!!result.setup);
+            throw new Error(result.error);
+          }
+        } else if (demo) demo.createRoute(data.data);
         else {
           const { error: e } = await supabase().rpc("create_route", {
             payload: data.data,
@@ -274,31 +343,37 @@ export function Admin({
   }
   return (
     <Modal
-      title="Organize sua operação"
-      subtitle="Cadastros simples para colocar a próxima entrega na estrada."
+      title={editingRoute ? "Editar rota" : "Organize sua operação"}
+      subtitle={
+        editingRoute
+          ? "Check-ins, check-outs e histórico GPS serão preservados."
+          : "Cadastros simples para colocar a próxima entrega na estrada."
+      }
       onClose={onClose}
       wide
     >
-      <div className="tabs">
-        {[
-          ["rota", "Nova rota"],
-          ["motorista", "Motorista"],
-          ["veiculo", "Veículo"],
-          ["cliente", "Cliente"],
-        ].map(([v, l]) => (
-          <button
-            key={v}
-            className={tab === v ? "selected" : ""}
-            onClick={() => {
-              setTab(v);
-              setError("");
-              setMessage("");
-            }}
-          >
-            {l}
-          </button>
-        ))}
-      </div>
+      {!editingRoute && (
+        <div className="tabs">
+          {[
+            ["rota", "Nova rota"],
+            ["motorista", "Motorista"],
+            ["veiculo", "Veículo"],
+            ["cliente", "Cliente"],
+          ].map(([v, l]) => (
+            <button
+              key={v}
+              className={tab === v ? "selected" : ""}
+              onClick={() => {
+                setTab(v);
+                setError("");
+                setMessage("");
+              }}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+      )}
       <form key={tab} className="admin-form" onSubmit={save}>
         {demo && (
           <p className="notice">
@@ -369,6 +444,7 @@ export function Admin({
                 Identificação da rota
                 <input
                   name="code"
+                  defaultValue={editingRoute?.code}
                   required
                   placeholder="Ex.: FT-2026-001"
                   maxLength={60}
@@ -376,15 +452,33 @@ export function Admin({
               </label>
               <label>
                 Saída prevista
-                <input name="scheduled" type="datetime-local" />
+                <input
+                  name="scheduled"
+                  type="datetime-local"
+                  defaultValue={
+                    editingRoute?.scheduled_at
+                      ? new Date(
+                          new Date(editingRoute.scheduled_at).getTime() -
+                            new Date(
+                              editingRoute.scheduled_at,
+                            ).getTimezoneOffset() *
+                              60000,
+                        )
+                          .toISOString()
+                          .slice(0, 16)
+                      : ""
+                  }
+                />
               </label>
               <label>
                 Motorista
                 <select
                   name="driver"
+                  value={selectedDriver}
+                  onChange={(e) => setSelectedDriver(e.target.value)}
                   aria-label="Motorista"
                   required
-                  disabled={driversBusy || syncingDrivers}
+                  disabled={driversBusy || syncingDrivers || driverLocked}
                 >
                   <option value="">
                     {driversBusy
@@ -414,7 +508,12 @@ export function Admin({
               </label>
               <label>
                 Veículo
-                <select name="vehicle" required>
+                <select
+                  name="vehicle"
+                  required
+                  value={selectedVehicle}
+                  onChange={(e) => setSelectedVehicle(e.target.value)}
+                >
                   <option value="">Selecione</option>
                   {vehicles.map((v) => (
                     <option key={v.id} value={v.id}>
@@ -433,7 +532,13 @@ export function Admin({
               Entregas <span className="count">{deliveries.length}</span>
             </h3>
             {deliveries.map((d, i) => (
-              <fieldset key={d.id}>
+              <fieldset
+                key={d.id}
+                disabled={
+                  editingRoute?.deliveries.find((x) => x.id === d.id)
+                    ?.status === "concluida"
+                }
+              >
                 <legend>Entrega {i + 1}</legend>
                 <div className="form-grid">
                   <label>
@@ -442,6 +547,11 @@ export function Admin({
                       aria-label="Cliente"
                       required
                       value={d.client_id}
+                      disabled={
+                        !!editingRoute &&
+                        editingRoute.deliveries.find((x) => x.id === d.id)
+                          ?.status !== "pendente"
+                      }
                       onChange={(e) => patch(i, "client_id", e.target.value)}
                     >
                       <option value="">Selecione</option>
@@ -457,6 +567,11 @@ export function Admin({
                     <input
                       required
                       value={d.cargo_code}
+                      readOnly={
+                        !!editingRoute &&
+                        editingRoute.deliveries.find((x) => x.id === d.id)
+                          ?.status !== "pendente"
+                      }
                       onChange={(e) => patch(i, "cargo_code", e.target.value)}
                     />
                   </label>
@@ -477,6 +592,7 @@ export function Admin({
                   <input
                     required
                     value={d.fiscal_code}
+                    readOnly={!!editingRoute}
                     onChange={(e) => patch(i, "fiscal_code", e.target.value)}
                   />
                 </label>
@@ -511,7 +627,7 @@ export function Admin({
                     />
                   </label>
                 </div>
-                {deliveries.length > 1 && (
+                {!editingRoute && deliveries.length > 1 && (
                   <button
                     type="button"
                     className="text-button danger"
@@ -525,15 +641,17 @@ export function Admin({
                 )}
               </fieldset>
             ))}
-            <button
-              type="button"
-              className="button secondary"
-              onClick={() => setDeliveries((ds) => [...ds, blank()])}
-              disabled={deliveries.length >= 100}
-            >
-              <Plus size={16} />
-              Adicionar entrega
-            </button>
+            {!editingRoute && (
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => setDeliveries((ds) => [...ds, blank()])}
+                disabled={deliveries.length >= 100}
+              >
+                <Plus size={16} />
+                Adicionar entrega
+              </button>
+            )}
           </>
         )}
         {(error || (tab === "rota" && catalogError)) && (
@@ -548,6 +666,11 @@ export function Admin({
             {message}
           </p>
         )}
+        {setupError && (
+          <a href="/atualizacao-rotas" target="_blank" rel="noreferrer">
+            Ativar edição e exclusão no Supabase
+          </a>
+        )}
         <footer className="form-footer">
           <button className="button secondary" type="button" onClick={onClose}>
             Cancelar
@@ -555,9 +678,11 @@ export function Admin({
           <button className="button primary" disabled={busy}>
             {busy
               ? "Salvando…"
-              : tab === "rota"
-                ? "Criar rota"
-                : "Salvar cadastro"}
+              : editingRoute
+                ? "Salvar alterações"
+                : tab === "rota"
+                  ? "Criar rota"
+                  : "Salvar cadastro"}
           </button>
         </footer>
       </form>

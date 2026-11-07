@@ -25,6 +25,7 @@ await db.exec(
     "utf8",
   ),
 );
+
 await db.query("insert into tenants(id,name) values($1,$2),($3,$4)", [
   tenant,
   "Teste",
@@ -205,7 +206,246 @@ checks++;
 await db.exec("reset role; set role anon");
 await fails("select * from routes");
 await fails("select create_route($1)", [payload]);
+
+await db.exec("reset role");
+const upgradeSql = await readFile(
+  new URL(
+    "../supabase/migrations/202611060001_route_management.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+await db.exec(upgradeSql);
+await db.exec(upgradeSql); // rerunning activation is safe, including existing history
+await as(manager);
+assert.equal(
+  (await db.query("select management_version from routes where id=$1", [route]))
+    .rows[0].management_version,
+  0,
+);
+assert.equal(
+  (
+    await db.query("select * from operational_events where route_id=$1", [
+      route,
+    ])
+  ).rows.length,
+  6,
+);
+checks += 2;
+const editable = await rpc("create_route", { ...payload, code: "EDIT-TEST" });
+const editDeliveries = (
+  await db.query(
+    "select * from deliveries where route_id=$1 order by cargo_code",
+    [editable],
+  )
+).rows;
+let editPayload = {
+  ...payload,
+  code: "EDIT-UPDATED",
+  deliveries: payload.deliveries.map((d, i) => ({
+    ...d,
+    id: editDeliveries[i].id,
+  })),
+};
+await db.query("select update_route($1,$2,$3)", [editable, 0, editPayload]);
+checks++;
+await fails("select update_route($1,$2,$3)", [editable, 0, editPayload]);
+assert.equal(
+  (
+    await db.query("select management_version from routes where id=$1", [
+      editable,
+    ])
+  ).rows[0].management_version,
+  1,
+);
+checks++;
+await as(driver);
+await fails("select update_route($1,$2,$3)", [editable, 1, editPayload]);
+await fails("select archive_routes($1)", [[{ id: editable, version: 1 }]]);
+const activeOp = {
+  ...operation(editDeliveries[0], "check_in"),
+  code: "NF-1",
+  route_id: editable,
+};
+await rpc("record_operation", activeOp);
+await rpc("start_route", editable);
+const gps = {
+  ...position,
+  id: randomUUID(),
+  route_id: editable,
+  captured_at: new Date().toISOString(),
+};
+await rpc("record_position", gps);
+await as(manager);
+const beforeEvents = (
+  await db.query("select * from operational_events where route_id=$1", [
+    editable,
+  ])
+).rows;
+await db.query("select update_route($1,$2,$3)", [
+  editable,
+  1,
+  {
+    ...editPayload,
+    deliveries: editPayload.deliveries.map((d, i) =>
+      i
+        ? d
+        : {
+            ...d,
+            destination: { ...d.destination, address: "Destino corrigido" },
+          },
+    ),
+  },
+]);
+checks++;
+assert.equal(
+  (await db.query("select status from routes where id=$1", [editable])).rows[0]
+    .status,
+  "ativa",
+);
+assert.deepEqual(
+  (
+    await db.query("select * from operational_events where route_id=$1", [
+      editable,
+    ])
+  ).rows,
+  beforeEvents,
+);
+checks += 2;
+await fails("select update_route($1,$2,$3)", [
+  editable,
+  2,
+  { ...editPayload, driver_id: manager },
+]);
+await db.exec("reset role");
+const secondDriver = randomUUID();
+await db.query("insert into auth.users values($1,$2,$3)", [
+  secondDriver,
+  "second@test.invalid",
+  JSON.stringify({
+    tenant_id: tenant,
+    role: "motorista",
+    name: "Segundo motorista",
+  }),
+]);
+await as(manager);
+await fails("select update_route($1,$2,$3)", [
+  editable,
+  2,
+  { ...editPayload, driver_id: secondDriver },
+]);
+await fails("select update_route($1,$2,$3)", [
+  editable,
+  2,
+  {
+    ...editPayload,
+    deliveries: editPayload.deliveries.map((d, i) =>
+      i === 1 ? { ...d, id: deliveries[1].id } : d,
+    ),
+  },
+]);
+
+await fails("select update_route($1,$2,$3)", [
+  editable,
+  2,
+  {
+    ...editPayload,
+    deliveries: editPayload.deliveries.map((d, i) =>
+      i ? d : { ...d, fiscal_code: "WRONG" },
+    ),
+  },
+]);
+await fails("select update_route($1,$2,$3)", [
+  editable,
+  2,
+  {
+    ...editPayload,
+    deliveries: [
+      ...editPayload.deliveries.slice(0, 2),
+      editPayload.deliveries[0],
+    ],
+  },
+]);
+await as(driver);
+await rpc("record_operation", {
+  ...operation(editDeliveries[0], "check_out"),
+  code: "NF-1",
+  route_id: editable,
+});
+await as(manager);
+await fails("select update_route($1,$2,$3)", [editable, 2, editPayload]); // completed destination cannot be rewritten
+await as(otherManager);
+await fails("select update_route($1,$2,$3)", [editable, 2, editPayload]);
+await fails("select archive_routes($1)", [[{ id: editable, version: 2 }]]);
+await as(manager);
+// The first removal must roll back if another selected route is unavailable.
+await fails("select archive_routes($1)", [
+  [
+    { id: editable, version: 2 },
+    { id: "ffffffff-ffff-4fff-8fff-ffffffffffff", version: 0 },
+  ],
+]);
+assert.equal(
+  (await db.query("select * from routes where id=$1", [editable])).rows.length,
+  1,
+);
+checks++;
+await fails("select archive_routes($1)", [[{ id: editable, version: 1 }]]);
+assert.equal(await rpc("archive_routes", [{ id: editable, version: 2 }]), 1);
+checks++;
+assert.equal(
+  (await db.query("select * from routes where id=$1", [editable])).rows.length,
+  0,
+);
+assert.equal(
+  (await db.query("select * from deliveries where route_id=$1", [editable]))
+    .rows.length,
+  0,
+);
+checks += 2;
+await as(driver);
+await rpc("record_position", { ...gps, id: randomUUID() });
+await rpc("record_operation", {
+  ...operation(editDeliveries[1], "check_in"),
+  code: "NF-2",
+  route_id: editable,
+});
+checks += 2;
+await fails("select start_route($1)", [editable]);
+await fails("select record_position($1)", [
+  { ...gps, id: randomUUID(), driver_id: stranger },
+]);
+await as(stranger);
+await fails("select record_position($1)", [{ ...gps, id: randomUUID() }]);
+await db.exec("reset role");
+assert.equal(
+  (
+    await db.query("select * from operational_events where route_id=$1", [
+      editable,
+    ])
+  ).rows.length,
+  2,
+);
+assert.equal(
+  (await db.query("select * from positions where route_id=$1", [editable])).rows
+    .length,
+  1,
+);
+assert.equal(
+  (
+    await db.query("select status from deliveries where id=$1", [
+      editDeliveries[1].id,
+    ])
+  ).rows[0].status,
+  "pendente",
+);
+checks += 3;
+await as(manager);
+await rpc("create_route", { ...payload, code: "EDIT-UPDATED" });
+checks++; // archived code can be reused
+await db.exec("reset role; set role anon");
+await fails("select archive_routes($1)", [[{ id: editable, version: 0 }]]);
 console.log(
-  `PASS: ${checks} verificações PostgreSQL: migration, RLS, segregação, transições, idempotência, GPS e conclusão parcial/total.`,
+  `PASS: ${checks} verificações PostgreSQL: migration, RLS, segregação, transições, idempotência, GPS, gestão de rotas, edição ativa e exclusão transacional.`,
 );
 await db.close();

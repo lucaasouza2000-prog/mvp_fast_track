@@ -15,6 +15,8 @@ import {
 import { labels, type Route, type Delivery } from "@fasttrack/core";
 import { Header, SetupNotice, Empty } from "../../components/ui";
 import { useWorkspace } from "../../lib/use-workspace";
+import { RouteManager } from "../../components/route-manager";
+import type { ManagedRoute } from "../../lib/route-management";
 import { Admin } from "../../components/admin";
 import { DeliveryDetail } from "../../components/delivery-detail";
 import { useDemo } from "../../lib/demo";
@@ -28,6 +30,8 @@ export default function Management() {
       route: Route;
       delivery: Delivery;
     } | null>(null);
+  const [managing, setManaging] = useState(false);
+  const [editing, setEditing] = useState<ManagedRoute | null>(null);
   const all = useMemo(
     () =>
       routes.flatMap((route) =>
@@ -61,14 +65,23 @@ export default function Management() {
               Acompanhe suas entregas<span>.</span>
             </h1>
           </div>
-          <button
-            className="button primary"
-            disabled={!profile}
-            onClick={() => setAdmin(true)}
-          >
-            <Plus size={18} />
-            Nova rota
-          </button>
+          <div className="management-actions">
+            <button
+              className="button secondary"
+              disabled={!profile || !!demo}
+              onClick={() => setManaging(true)}
+            >
+              Gerenciar rotas
+            </button>
+            <button
+              className="button primary"
+              disabled={!profile}
+              onClick={() => setAdmin(true)}
+            >
+              <Plus size={18} />
+              Nova rota
+            </button>
+          </div>
         </div>
         <SetupNotice />
         {error && (
@@ -281,6 +294,29 @@ export default function Management() {
           <span>Fast Ariam Equipamentos & Nostra Via</span>
         </footer>
       </main>
+      {managing && !editing && (
+        <RouteManager
+          routes={routes}
+          onClose={() => setManaging(false)}
+          onSaved={() => {
+            setSelected(null);
+            void reload();
+          }}
+          onEdit={setEditing}
+        />
+      )}
+      {editing && profile && (
+        <Admin
+          key={editing.id}
+          profile={profile}
+          editingRoute={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            void reload();
+          }}
+        />
+      )}
       {admin && profile && (
         <Admin
           profile={profile}
@@ -288,11 +324,8 @@ export default function Management() {
           onSaved={() => void reload()}
         />
       )}
-      {selected && (current ?? selected) && (
-        <DeliveryDetail
-          {...(current ?? selected)}
-          onClose={() => setSelected(null)}
-        />
+      {selected && current && (
+        <DeliveryDetail {...current} onClose={() => setSelected(null)} />
       )}
     </>
   );
